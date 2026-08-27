@@ -11,6 +11,7 @@ from typing import Callable
 import numpy as np
 
 from . import backend
+from .bits import bitwise_count
 
 
 def is_prime(n: int) -> bool:
@@ -74,23 +75,25 @@ def _modpow_matrix(base: np.ndarray, exp: int, mod: int) -> np.ndarray:
 
 def paley_prime(p: int) -> tuple[np.ndarray, dict]:
     """Classical Paley: vertices F_p, edge iff x-y is a quadratic residue.
-    GPU kernel: outer difference + Euler criterion a^{(p-1)/2}.
-    Run001 DID this for primes p ≡ 1 (mod 4).
+
+    O(p) connection row via x ↦ x² (not Euler a^{(p-1)/2} on the N×N tensor),
+    then a circulant broadcast. Spectrum is closed-form: skip eigendecomposition.
+    Run001 DID this for primes p ≡ 1 (mod 4), but via CPU Euler sketches.
     """
     if not is_prime(p) or p % 4 != 1:
         raise ValueError("Paley requires prime p ≡ 1 (mod 4)")
-    idx = np.arange(p, dtype=np.int64)
-    diff = (idx[:, None] - idx[None, :]) % p
-    # Euler: 1 = QR, p-1 = NR, 0 = 0
-    leg = _modpow_matrix(diff, (p - 1) // 2, p)
-    adj = (leg == 1).astype(np.uint8)
+    from .kernels.sieve import quadratic_residue_row
+
+    row = quadratic_residue_row(p)
+    adj = np.stack([np.roll(row, i) for i in range(p)]).astype(np.uint8)
     np.fill_diagonal(adj, 0)
     return adj, {
         "construction_type": "paley_prime",
-        "gpu_kernel": "outer_diff + euler_legendre",
+        "gpu_kernel": "O(p) squares + circulant_roll",
         "field": f"F_{p}",
         "params": {"p": p},
         "run001": "done",
+        "row": row,
     }
 
 
@@ -177,45 +180,27 @@ def generalized_paley(p: int, k: int) -> tuple[np.ndarray, dict]:
 
 def cyclotomic_union(p: int, e: int, class_mask: int) -> tuple[np.ndarray, dict]:
     """Cayley graph on F_p with connection set a union of cyclotomic classes of index e.
-    GPU kernel: discrete-log table + (dlog[x-y] % e) ∈ S, fully data-parallel.
-    Run001 mentioned cyclotomic search guided by RF but did not sweep GPU class unions.
+
+    O(p) geometric-progression fill of each class (not O(p²) dlog tensor), then
+    circulant broadcast. Negation-closed masks: 2^{e/2} candidates, Gray-code order.
     """
     if not is_prime(p) or (p - 1) % e != 0:
         raise ValueError("e must divide p-1")
+    from .kernels.sieve import cyclotomic_row
+
+    row, class_mask = cyclotomic_row(p, e, class_mask)
     g = primitive_root(p)
-    dlog = np.full(p, -1, dtype=np.int32)
-    acc = 1
-    for i in range(p - 1):
-        dlog[acc] = i
-        acc = (acc * g) % p
-    # -1 lives in class ((p-1)/2) % e; require S = -S
-    idx = np.arange(p, dtype=np.int64)
-    diff = (idx[:, None] - idx[None, :]) % p
-    cls = np.zeros((p, p), dtype=np.int32)
-    nz = diff != 0
-    cls[nz] = dlog[diff[nz]] % e
     selected = [(i, bool(class_mask & (1 << i))) for i in range(e)]
-    # force negation-closure: if e even, class i paired with i + e/2
-    if e % 2 == 0:
-        half = e // 2
-        closed = 0
-        for i in range(e):
-            if class_mask & (1 << i):
-                closed |= 1 << i
-                closed |= 1 << ((i + half) % e)
-        class_mask = closed
-    bits = np.array([(class_mask >> i) & 1 for i in range(e)], dtype=np.uint8)
-    adj = np.zeros((p, p), dtype=np.uint8)
-    adj[nz] = bits[cls[nz]]
+    adj = np.stack([np.roll(row, i) for i in range(p)]).astype(np.uint8)
     np.fill_diagonal(adj, 0)
-    adj = _symmetrize(adj)
     return adj, {
         "construction_type": "cyclotomic_union",
-        "gpu_kernel": "dlog_table + class_membership_mask",
+        "gpu_kernel": "O(p) cyclotomic orbits + circulant_roll",
         "field": f"F_{p}",
         "params": {"p": p, "e": e, "mask": int(class_mask), "primitive_root": g,
                    "selected": selected},
         "run001": "not_done",
+        "row": row,
     }
 
 
@@ -232,17 +217,19 @@ def quadratic_form_f2(n_bits: int, form: str = "symplectic") -> tuple[np.ndarray
         for i in range(0, n_bits - 1, 2):
             q ^= ((xor >> i) & 1).astype(np.uint8) & ((xor >> (i + 1)) & 1).astype(np.uint8)
     elif form == "adjacent_bits":
-        q = (np.bitwise_count(xor & (xor >> np.uint64(1))) & 1).astype(np.uint8)
+        q = (bitwise_count(xor & (xor >> np.uint64(1))) & 1).astype(np.uint8)
     else:
         raise ValueError(form)
     adj = q.astype(np.uint8)
     np.fill_diagonal(adj, 0)
+    f = adj[0].copy()
     return adj, {
         "construction_type": "quadratic_form_f2",
         "gpu_kernel": "xor_outer + bitwise_quadratic",
         "field": f"F_2^{n_bits}",
         "params": {"n_bits": n_bits, "form": form, "N": n},
         "run001": "not_done",
+        "boolean_f": f,
     }
 
 
@@ -253,80 +240,18 @@ def gold_trace_f2(n_bits: int, k: int = 1) -> tuple[np.ndarray, dict]:
     """
     if n_bits < 3:
         raise ValueError("n_bits >= 3")
-    # primitive polynomials (odd n preferred for Gold bent-related)
-    irr_table = {
-        3: 0b1011,  # x^3+x+1
-        4: 0b10011,  # x^4+x+1
-        5: 0b100101,  # x^5+x^2+1
-        6: 0b1000011,  # x^6+x+1
-        7: 0b10000011,  # x^7+x+1
-        8: 0b100011101,  # x^8+x^4+x^3+x^2+1
-        9: 0b1000010001,  # x^9+x^4+1
-        10: 0b10000001001,  # x^10+x^3+1
-    }
-    irr = irr_table[n_bits]
+    from .gf2 import IRR, cayley_from_boolean, trace_of_power
+
+    f = trace_of_power(n_bits, (1 << k) + 1)
+    adj = cayley_from_boolean(f)
     n = 1 << n_bits
-    mask = (1 << n_bits) - 1
-
-    def gf_mul(a: int, b: int) -> int:
-        p = 0
-        while b:
-            if b & 1:
-                p ^= a
-            b >>= 1
-            carry = a & (1 << (n_bits - 1))
-            a = (a << 1) & mask
-            if carry:
-                a ^= irr & mask
-                # also xor the implicit x^n term's reduction: irr includes x^n
-                if irr & (1 << n_bits):
-                    a ^= irr & mask
-            # simpler: use full reduction
-        return p
-
-    # robust clmul + reduction
-    def gf_mul2(a: int, b: int) -> int:
-        p = 0
-        aa, bb = a, b
-        while bb:
-            if bb & 1:
-                p ^= aa
-            bb >>= 1
-            aa <<= 1
-        # reduce mod irr (degree n)
-        for i in range(p.bit_length() - 1, n_bits - 1, -1):
-            if p & (1 << i):
-                p ^= irr << (i - n_bits)
-        return p & mask
-
-    def gf_pow(a: int, e: int) -> int:
-        r = 1
-        while e:
-            if e & 1:
-                r = gf_mul2(r, a)
-            a = gf_mul2(a, a)
-            e >>= 1
-        return r
-
-    def trace(a: int) -> int:
-        s = a
-        x = a
-        for _ in range(n_bits - 1):
-            x = gf_mul2(x, x)  # Frobenius x |-> x^2
-            s ^= x
-        return s & 1
-
-    exp = (1 << k) + 1
-    f = np.array([trace(gf_pow(i, exp)) for i in range(n)], dtype=np.uint8)
-    xor = np.arange(n)[:, None] ^ np.arange(n)[None, :]
-    adj = f[xor]
-    np.fill_diagonal(adj, 0)
-    return adj.astype(np.uint8), {
+    return adj, {
         "construction_type": "gold_trace_f2",
         "gpu_kernel": "xor_outer + gf2n_pow + frobenius_trace",
         "field": f"F_2^{n_bits}",
-        "params": {"n_bits": n_bits, "k": k, "irr": irr, "N": n},
+        "params": {"n_bits": n_bits, "k": k, "irr": IRR[n_bits], "N": n},
         "run001": "not_done",
+        "boolean_f": f,
     }
 
 
@@ -366,7 +291,7 @@ def nagy_intersecting(t: int) -> tuple[np.ndarray, dict]:
     """
     pairs = [(i, j) for i in range(t) for j in range(i + 1, t)]
     bits = np.array([(1 << a) | (1 << b) for a, b in pairs], dtype=np.uint64)
-    inter = np.bitwise_count(bits[:, None] & bits[None, :])
+    inter = bitwise_count(bits[:, None] & bits[None, :])
     adj = (inter == 1).astype(np.uint8)
     np.fill_diagonal(adj, 0)
     return adj, {
@@ -580,7 +505,7 @@ def features(adj: np.ndarray, meta: dict, cert: dict) -> dict:
 
 def _id_suffix(params: dict, n: int) -> str:
     parts = []
-    for key in ("p", "q", "k", "e", "mask", "n_bits", "form", "t", "seed", "n"):
+    for key in ("p", "q", "k", "e", "mask", "n_bits", "form", "t", "seed", "n", "L", "kind"):
         if key in params:
             val = params[key]
             if isinstance(val, str):
@@ -589,6 +514,161 @@ def _id_suffix(params: dict, n: int) -> str:
     if not parts:
         parts.append(f"N{n}")
     return "_".join(str(p) for p in parts)
+
+
+def kasami_trace_f2(n_bits: int) -> tuple[np.ndarray, dict]:
+    """Kasami Boolean function: n=2m, f(x)=Tr(x^{2^m+1}). Sibling of Gold; same FWHT cert."""
+    if n_bits < 4 or n_bits % 2:
+        raise ValueError("Kasami kernel wants even n_bits >= 4")
+    from .gf2 import IRR, cayley_from_boolean, trace_of_power
+
+    m = n_bits // 2
+    f = trace_of_power(n_bits, (1 << m) + 1)
+    adj = cayley_from_boolean(f)
+    return adj, {
+        "construction_type": "gold_trace_f2",
+        "gpu_kernel": "xor_outer + kasami_trace",
+        "field": f"F_2^{n_bits}",
+        "params": {"n_bits": n_bits, "k": m, "kind": "kasami", "irr": IRR[n_bits], "N": 1 << n_bits},
+        "run001": "not_done",
+        "boolean_f": f,
+    }
+
+
+def polarity_gq(q: int) -> tuple[np.ndarray, dict]:
+    """Collinearity graph of W(3,q): points of PG(3,q), edge iff symplectic-orthogonal.
+
+    This is the GQ polarity graph Mattheus–Verstraete-style constructions start from
+    (job 1C / 3C). N = q³+q²+q+1. Prime fields only in this kernel.
+    """
+    if not is_prime(q):
+        raise ValueError("GQ kernel uses prime F_q")
+    pts: list[tuple[int, int, int, int]] = []
+    # 1-spaces: first nonzero coordinate normalised to 1
+    for a in range(q):
+        for b in range(q):
+            for c in range(q):
+                pts.append((1, a, b, c))
+    for b in range(q):
+        for c in range(q):
+            pts.append((0, 1, b, c))
+    for c in range(q):
+        pts.append((0, 0, 1, c))
+    pts.append((0, 0, 0, 1))
+    coords = np.array(pts, dtype=np.int64)
+    # B(u,v) = u0 v2 − u2 v0 + u1 v3 − u3 v1  (standard hyperbolic symplectic form)
+    u0, u1, u2, u3 = coords.T
+    form = (
+        np.mod(u0[:, None] * u2[None, :] - u2[:, None] * u0[None, :]
+               + u1[:, None] * u3[None, :] - u3[:, None] * u1[None, :], q)
+    )
+    adj = (form == 0).astype(np.uint8)
+    np.fill_diagonal(adj, 0)
+    return adj, {
+        "construction_type": "polarity_gq",
+        "gpu_kernel": "PG(3,q) points + symplectic form GEMM",
+        "field": f"W(3,{q})",
+        "params": {"q": q, "N": int(adj.shape[0])},
+        "run001": "not_done",
+    }
+
+
+def frankl_wilson(n: int, k: int, L: tuple[int, ...] = (0, 1)) -> tuple[np.ndarray, dict]:
+    """Intersection graph on k-subsets of [n]; edge iff |A∩B| ∈ L. Bitset AND + popcount."""
+    from itertools import combinations
+
+    verts = list(combinations(range(n), k))
+    bits = np.array([sum(1 << i for i in v) for v in verts], dtype=np.uint64)
+    inter = bitwise_count(bits[:, None] & bits[None, :])
+    allowed = np.zeros(k + 1, dtype=np.uint8)
+    for ell in L:
+        if 0 <= ell <= k:
+            allowed[ell] = 1
+    adj = allowed[inter].astype(np.uint8)
+    np.fill_diagonal(adj, 0)
+    return adj, {
+        "construction_type": "frankl_wilson",
+        "gpu_kernel": "ksubset_bitset AND + popcount membership",
+        "field": f"{k}-subsets of [{n}]",
+        "params": {"n": n, "k": k, "L": list(L), "N": int(adj.shape[0])},
+        "run001": "not_done",
+    }
+
+
+def sidon_disperser(p: int) -> tuple[np.ndarray, dict]:
+    """Circulant whose connection set is a geometric progression (Bose-style Sidon seed).
+
+    Explicit expander / disperser-ish Cayley graph on Z/pZ. O(log p) generators.
+    """
+    if not is_prime(p):
+        raise ValueError("prime order")
+    S = []
+    x = 1
+    seen = set()
+    while x not in seen and x % p:
+        seen.add(x)
+        S.append(x)
+        x = (2 * x) % p
+    from .kernels.cayley import closed_S, adj_from_row
+
+    row = closed_S(p, S)
+    adj = adj_from_row(row)
+    return adj, {
+        "construction_type": "disperser",
+        "gpu_kernel": "geometric_progression circulant",
+        "field": f"Z/{p}Z",
+        "params": {"p": p, "kind": "sidon_gp", "degree": int(row.sum())},
+        "run001": "not_done",
+        "row": row,
+    }
+
+
+def anf_quadratic_f2(n_bits: int, seed: int = 0) -> tuple[np.ndarray, dict]:
+    """Random quadratic ANF Boolean function on F_2^n. Spectrum via FWHT in O(N log N)."""
+    from .gf2 import cayley_from_boolean
+
+    rng = np.random.default_rng(seed)
+    n = 1 << n_bits
+    # upper-triangular quadratic coefficients, O(n_bits²) parameters
+    coeff = rng.integers(0, 2, size=(n_bits, n_bits), dtype=np.uint8)
+    coeff = np.triu(coeff)
+    f = np.zeros(n, dtype=np.uint8)
+    for x in range(n):
+        s = 0
+        for i in range(n_bits):
+            if not ((x >> i) & 1):
+                continue
+            for j in range(i, n_bits):
+                if coeff[i, j] and ((x >> j) & 1):
+                    s ^= 1
+        f[x] = s
+    f[0] = 0
+    adj = cayley_from_boolean(f) if n_bits <= 12 else np.zeros((1, 1), dtype=np.uint8)
+    return adj, {
+        "construction_type": "quadratic_form_f2",
+        "gpu_kernel": "ANF quadratic eval + xor_outer + FWHT",
+        "field": f"F_2^{n_bits}",
+        "params": {"n_bits": n_bits, "form": "anf", "seed": seed, "N": n},
+        "run001": "not_done",
+        "boolean_f": f,
+    }
+
+
+def block_circulant_from_seed(seed_row: np.ndarray, steps: int = 80, rng_seed: int = 0) -> tuple[np.ndarray, dict]:
+    """2-block circulant ILS seeded from a circulant first row (job 3A)."""
+    from .kernels.cayley import ils_two_block
+
+    m = int(seed_row.size)
+    s0 = np.asarray(seed_row, dtype=np.uint8).copy()
+    s1 = np.roll(s0, m // 3)
+    rec = ils_two_block(m, steps=steps, rng=np.random.default_rng(rng_seed), seed_s0=s0, seed_s1=s1)
+    return rec["adj"], {
+        "construction_type": "block_circulant",
+        "gpu_kernel": "two_block ILS on O(m) distances",
+        "field": f"Z_2 × Z_{m}",
+        "params": {"n": rec["n"], "m": m, "score": rec["score"]},
+        "run001": "not_done",
+    }
 
 
 BUILDERS: dict[str, Callable[..., tuple[np.ndarray, dict]]] = {
@@ -602,4 +682,10 @@ BUILDERS: dict[str, Callable[..., tuple[np.ndarray, dict]]] = {
     "nagy_intersecting": nagy_intersecting,
     "tensor_strong_product": tensor_strong_product,
     "singer_difference": singer_difference,
+    "kasami_trace_f2": kasami_trace_f2,
+    "polarity_gq": polarity_gq,
+    "frankl_wilson": frankl_wilson,
+    "disperser": sidon_disperser,
+    "anf_quadratic_f2": anf_quadratic_f2,
+    "block_circulant": block_circulant_from_seed,
 }

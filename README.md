@@ -26,16 +26,67 @@ These constructions **can** run on GPU and **were not** run:
 | GPU Lovász \(\vartheta\) SDP | CVXPY / randomized SDP | Replaced by Hoffman proxies; no `verification_log.json` |
 | GEMM clique counting | \(A^3\) / neighborhood \(A^3\) | Exact \(\omega\) assigned to CPU cliquer |
 
-This repo **implements** the algebraic families (first ten rows except the search/SDP/PPO block) as vectorized NumPy kernels that switch to CUDA when `torch.cuda` is available. It does **not** train a GNN or run PPO — Berghaus–Wagner (ICLR 2025) already showed RL edge-flip can lose to random on \(R(4,4)\), and shipping a fake `gnn_model.pt` would not close Erdős 78.
+This repo **implements** the algebraic families **and** the search jobs Run001 skipped, with certificates that stay on the O(n) / O(n log n) side of the ledger. It does **not** train PPO edge-flip — Berghaus–Wagner (ICLR 2025) already showed RL can lose to random on \(R(4,4)\). Job 2A’s one learned object is a spectral Hoffman ranker on cyclotomic masks (`data/mask_ranker.json`).
 
-## Run the catalogue
+## Algorithmic upgrades (wired into the kernels)
+
+| Trick | Source | Where |
+|---|---|---|
+| Paley connection row = image of \(x\mapsto x^2\) in \(O(p)\) | CP / Project Euler | `kernels/sieve.py` |
+| Paley spectrum in closed form \((q-1)/2\), \((-1\pm\sqrt q)/2\) | Paley 1933 | `kernels/rowcert.py` |
+| Linear sieve for primes | Euler sieve | `kernels/sieve.py` |
+| Circulant eigenvalues = FFT of the first row | Davis / Diaconis | `kernels/spectrum.py` |
+| Boolean Cayley eigenvalues = Walsh–Hadamard | Bernasconi–Codenotti | `fwht` |
+| \(\omega(G)=1+\omega(G[N(0)])\), \(\alpha(G)=1+\alpha(G[N^c(0)])\) | Yu arXiv:2608.18169 (R(4,20)≥252) | `rowcert.py` |
+| \(K_4\)-free ⇔ neighbourhood triangle-free | same + Cayley folklore | `kernels/cayley.py` |
+| \(R(3,k)\) circulant ⇔ Schur sum-free \(S\) | additive combinatorics | job 2C |
+| Distance space: \(O(n)\) binary variables | arXiv:2608.18769 IP circulant | ILS |
+| Cyclotomic \(S=-S\): \(2^{e/2}\) masks, Gray code | cyclotomy / Yu quintic | job 2A |
+| Tomita MCS + degeneracy colour bound | CP bitset BK / BBMC | `kernels/mcs.py` |
+| Delsarte \(\omega\le 1-d/\lambda_{\min}\), Cvetković inertia | association schemes | `spectrum.py` |
+| Two-block circulant ILS | Exoo / DSC-3 | job 3A |
+
+Exact certificates (Paley 5/17, …) are theorems. Spectral \(k\) on large \(N\) is **not** \(C\ge 1.01\).
+
+## Run locally
 
 ```bash
-python3 engine/test_invariants.py   # Paley(17) is K4-free, Nagy(6) has ω=5, …
-python3 engine/run.py               # writes data/ramsey_constructions.csv and catalog JSON
+python3 engine/test_kernels.py      # FFT Paley(17) = eigvalsh, VT ω=3, FWHT
+python3 engine/test_invariants.py
+python3 -m engine.cli --job phase0 --scale local
+python3 -m engine.cli --job 1a --scale local     # Paley p≤101
+python3 -m engine.cli --job 1c --scale local     # W(3,q)
+# phases: --job phase1 | phase2 | phase3 | all
 ```
 
-On a machine with CUDA, the same `engine/backend.py` path uses GPU GEMM and `torch.linalg.eigvalsh`. This cloud box has OpenBLAS + AVX-512, no NVIDIA device.
+`RAMSEY_SCALE=local` keeps Paley ≤101, cyclotomic \(p\le 181\), \(\mathbb F_2^n\) with \(n\le 10\). CUDA sets the default to `runpod` (Paley ≤997, cyclotomic \(p\le 10^4\), \(n\le 12\), ANF \(n=13..16\)).
+
+## RunPod
+
+No API key is required in this repo. Build from the official pre-cached image and launch **one job per pod**:
+
+```bash
+docker build --platform=linux/amd64 -t YOUR_REGISTRY/ramsey-gpu:latest .
+```
+
+On [runpod.io](https://runpod.io) create a GPU pod from that image. **Do not override the container command** — the base image’s `/start.sh` owns SSH/Jupyter. Work starts from `/post_start.sh`.
+
+Environment (see `runpod.env.example`):
+
+| Pod | `RAMSEY_JOB` | Owns | Cell |
+|---|---|---|---|
+| A | `1a` | Paley recertify \(p\le 997\) | cert |
+| B | `1b` | \(\mathbb F_2^n\) Gold/Kasami \(n=8..12\) | cert |
+| C | `1c` | GQ polarity W(3,q) | \(R(4,t)\)-geom |
+| D | `1d` | Frankl–Wilson + dispersers | explicit-diag |
+| then | `2a` | cyclotomic enum \(p\le 10^4\) | cert (3A may only **perturb** these) |
+| ∥ | `2c` | circulant | **\(R(3,k)\) only** |
+| then | `3a` | block-circulant ILS | diagonal \(R(k,k)\) |
+| | `3b` | circulant | \(R(4,k)\), \(k=5..20\) |
+| | `3c` | GQ scale-up | large-\(t\) \(R(4,t)\) |
+| | `3d` | ANF search | \(n=13..16\) |
+
+Also set `RAMSEY_SCALE=runpod`. Base image pin: `runpod/pytorch:1.0.3-cu1281-torch280-ubuntu2404`.
 
 ## Run the dashboard
 
@@ -46,14 +97,15 @@ npm run dev     # http://127.0.0.1:43123
 
 ## What the numbers mean
 
-For each graph we report a **certified** \(k=\max(\omega^\uparrow,\alpha^\uparrow)+1\), so \(R(k,k)>N\) whenever the bounds are valid. Exact Bron–Kerbosch is used for \(N\le 21\) (Paley(17) recovers \(\omega=\alpha=3\), hence \(R(4,4)>17\)). Larger graphs use the ratio / Hoffman spectral bounds, which are **loose** — they inflate \(k\) and therefore shrink \(N^{1/k}\). Treat large-\(N\) \(N^{1/k}\) as a pessimistic proxy, not a new exponential lower bound.
+For each graph we report a **certified** \(k=\max(\omega^\uparrow,\alpha^\uparrow)+1\), so \(R(k,k)>N\) whenever the bounds are valid. Vertex-transitive exact MCS on the neighbourhood recovers Paley(17): \(\omega=\alpha=3\), hence \(R(4,4)>17\). Larger graphs use Hoffman / Delsarte / ratio bounds, which are **loose** — they inflate \(k\) and therefore shrink \(N^{1/k}\). Treat large-\(N\) \(N^{1/k}\) as a pessimistic proxy, not a new exponential lower bound.
 
-OEIS A000791 is the validation table: \(R(3,3)=6\), \(R(4,4)=18\), \(R(5,5)\in[43,48]\).
+OEIS A000791: \(R(3,3)=6\), \(R(4,4)=18\), \(R(5,5)\in[43,48]\). Yu 2026: \(R(4,20)\ge 252\) via a 251-vertex quintic-cyclotomic circulant (the 3B target order).
 
 ## Layout
 
-- `engine/constructions.py` — parametric families
-- `engine/certify.py` — exact + GEMM + spectral certificates
-- `engine/gap.py` — the Run001 gap list (single source of truth)
-- `data/ramsey_constructions.csv` — flat schema compatible with Run001
+- `engine/constructions.py` — parametric families (Paley, GP, cyclotomic, \(\mathbb F_2\), GQ, FW, …)
+- `engine/kernels/` — FFT / FWHT / MCS / ILS / sieve
+- `engine/cli.py` — `python3 -m engine.cli --job …`
+- `engine/jobs.py` — ownership table; writes `data/registry.jsonl` + `bound_ledger.json`
+- `Dockerfile` + `post_start.sh` — RunPod
 - `src/` — Next.js dashboard

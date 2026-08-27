@@ -70,4 +70,14 @@ export type Catalog = {
   }[];
   reference_curves: { name: string; points: { k: number; N: number }[] }[];
   heatmaps: Record<string, number[][]>;
+  jobs?: Record<
+    string,
+    {
+      n_graphs: number;
+      scale: string;
+      seconds: number;
+      owners?: { cells: string[]; families: string[] };
+    }
+  >;
+  algorithms?: string[];
 };

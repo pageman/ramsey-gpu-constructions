@@ -86,6 +86,9 @@ export function Dashboard({
           <a className="rounded-full border border-[var(--line)] px-3 py-1 text-[var(--muted)] hover:border-[var(--gold)] hover:text-[var(--cream)]" href="#graphs">
             Graphs
           </a>
+          <a className="rounded-full border border-[var(--line)] px-3 py-1 text-[var(--muted)] hover:border-[var(--gold)] hover:text-[var(--cream)]" href="#runpod">
+            RunPod jobs
+          </a>
           <a className="rounded-full border border-[var(--line)] px-3 py-1 text-[var(--muted)] hover:border-[var(--gold)] hover:text-[var(--cream)]" href="#oeis">
             OEIS A000791
           </a>
@@ -155,6 +158,64 @@ export function Dashboard({
             </article>
           ))}
         </div>
+      </section>
+
+      <section id="runpod" className="flex flex-col gap-4">
+        <h2 className="font-serif text-2xl text-[var(--cream)]">
+          RunPod jobs — non-overlapping cells
+        </h2>
+        <p className="max-w-3xl text-sm leading-relaxed text-[var(--muted)]">
+          Four pods can run phase 1 in parallel after the phase-0 kernel
+          tests. 2C (circulant R(3,k)) runs beside 2A (cyclotomic
+          enumeration). Phase 3 only perturbs 2A/Paley/Singer winners. Set{" "}
+          <span className="font-mono text-[var(--cream)]">RAMSEY_JOB</span> per
+          pod; never two pods on the same (family, cell).
+        </p>
+        <div className="overflow-x-auto rounded-lg border border-[var(--line)]">
+          <Table>
+            <TableHeader>
+              <TableRow className="border-[var(--line)] hover:bg-transparent">
+                <TableHead>job</TableHead>
+                <TableHead>owns</TableHead>
+                <TableHead>cell</TableHead>
+                <TableHead>this run</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {PLAN_JOBS.map((j) => {
+                const done = catalog.jobs?.[j.id];
+                return (
+                  <TableRow key={j.id} className="border-[var(--line)]">
+                    <TableCell className="font-mono text-[var(--cream)]">
+                      {j.id}
+                    </TableCell>
+                    <TableCell className="text-sm text-[var(--muted)]">
+                      {j.owns}
+                    </TableCell>
+                    <TableCell className="font-mono text-[11px]">
+                      {j.cell}
+                    </TableCell>
+                    <TableCell className="font-mono text-[11px] text-[var(--gold)]">
+                      {done
+                        ? `${done.n_graphs} graphs · ${done.seconds}s · ${done.scale}`
+                        : "queued"}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
+        <ul className="grid gap-2 text-sm text-[var(--muted)]">
+          {(catalog.algorithms ?? DEFAULT_ALGORITHMS).map((a) => (
+            <li
+              key={a}
+              className="rounded-md border border-[var(--line)] px-3 py-2 font-mono text-[11px] leading-relaxed"
+            >
+              {a}
+            </li>
+          ))}
+        </ul>
       </section>
 
       <section className="flex flex-col gap-4">
@@ -352,20 +413,47 @@ export function Dashboard({
         </p>
         <p className="flex items-start gap-2 text-sm text-[var(--muted)]">
           <PlusCircle className="mt-0.5 size-4 shrink-0 text-[var(--gold)]" />
-          Re-run the kernels with{" "}
+          Re-run locally with{" "}
           <code className="mx-1 font-mono text-[var(--cream)]">
-            python3 engine/run.py
+            python3 -m engine.cli --job 1a --scale local
           </code>
-          . On a CUDA box the same code path uses GPU GEMM and{" "}
+          or on RunPod with{" "}
           <code className="mx-1 font-mono text-[var(--cream)]">
-            torch.linalg.eigvalsh
+            RAMSEY_JOB=1a
           </code>
-          .
+          . On a CUDA box the same kernels use GPU GEMM; circulant spectra stay
+          on the FFT of the first row.
         </p>
       </section>
     </div>
   );
 }
+
+const PLAN_JOBS = [
+  { id: "1a", owns: "Paley primes recertify (O(p) squares + closed spectrum)", cell: "cert" },
+  { id: "1b", owns: "F₂ⁿ Gold / Kasami / symplectic", cell: "cert" },
+  { id: "1c", owns: "GQ polarity W(3,q) + PG(2,q)", cell: "R(4,t)-geom" },
+  { id: "1d", owns: "Frankl–Wilson + Sidon dispersers", cell: "explicit-diag" },
+  { id: "2a", owns: "Cyclotomic class-union enum; spectral mask ranker", cell: "cert" },
+  { id: "2b", owns: "Recertify 1B/1C/1D", cell: "cert" },
+  { id: "2c", owns: "Circulant search", cell: "R(3,k) only" },
+  { id: "3a", owns: "Block-circulant ILS from Paley/Singer/2A winners", cell: "R(k,k)" },
+  { id: "3b", owns: "Circulant search", cell: "R(4,k), k=5..20" },
+  { id: "3c", owns: "GQ scale-up", cell: "large-t R(4,t)" },
+  { id: "3d", owns: "F₂ ANF search n=13..16", cell: "explicit-diag" },
+];
+
+const DEFAULT_ALGORITHMS = [
+  "O(p) Paley row via x↦x² (not Euler on N×N); Paley spectrum in closed form",
+  "O(p) cyclotomic orbits; 2^{e/2} negation-closed masks (Gray code)",
+  "Circulant eigenvalues = FFT of the first row (Davis / Diaconis)",
+  "Boolean Cayley eigenvalues = FWHT (Bernasconi–Codenotti)",
+  "ω(G)=1+ω(G[N(0)]) and α(G)=1+α(G[N^c(0)]) (Yu arXiv:2608.18169)",
+  "K4-free ⇔ neighbourhood triangle-free; R(3,k) ⇔ Schur sum-free S",
+  "Distance-space ILS: O(n) binary variables (arXiv:2608.18769 IP circulant)",
+  "Tomita MCS + degeneracy colour bound; Cvetković inertia + Delsarte ω≤1−d/λ_min",
+  "2A ranker is spectral Hoffman, not PPO edge-flip (Berghaus–Wagner ICLR 2025)",
+];
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
