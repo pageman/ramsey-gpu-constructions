@@ -1,0 +1,19 @@
+{
+  "updated": "2026-08-27T19:01:02Z",
+  "claims": [
+    {
+      "graph_id": "polarity_gq_q2",
+      "N": 15,
+      "k": 6,
+      "statement": "R(6,6) > 15",
+      "exact": true
+    },
+    {
+      "graph_id": "polarity_gq_q3",
+      "N": 40,
+      "k": 11,
+      "statement": "spectral k=11 (not a theorem)",
+      "exact": false
+    }
+  ]
+}
