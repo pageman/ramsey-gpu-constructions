@@ -107,5 +107,6 @@ OEIS A000791: \(R(3,3)=6\), \(R(4,4)=18\), \(R(5,5)\in[43,48]\). Yu 2026: \(R(4,
 - `engine/kernels/` — FFT / FWHT / MCS / ILS / sieve
 - `engine/cli.py` — `python3 -m engine.cli --job …`
 - `engine/jobs.py` — ownership table; writes `data/registry.jsonl` + `bound_ledger.json`
+- `docs/plan-move-a-number.md` — kernel/search plan to move a Radziszowski cell (Yu-pool, circulant \(R(3,t)\), polarity exact \(\alpha\))
 - `Dockerfile` + `post_start.sh` — RunPod
 - `src/` — Next.js dashboard
