@@ -14,7 +14,7 @@ from engine.certify import certify
 from engine.constructions import paley_prime, polarity_gq, frankl_wilson
 from engine.kernels.cayley import k4_free_via_neighbourhood, triangle_free_circulant
 from engine.kernels.mcs import omega_vertex_transitive
-from engine.kernels.rowcert import certify_circulant_row, paley_closed_eigs
+from engine.kernels.rowcert import certify_boolean_cayley, certify_circulant_row, paley_closed_eigs
 from engine.kernels.sieve import quadratic_residue_row
 from engine.kernels.spectrum import fft_eigenvalues, fwht, spectral_bounds_from_eigs
 
@@ -79,6 +79,18 @@ def test_gq2_order() -> None:
     _assert(deg == 6, f"GQ(2,2) collinearity degree 6, got {deg}")
 
 
+def test_boolean_residual_limit_skips_mcs() -> None:
+    """n=13 ANF residual is ~4k vertices; residual_limit=64 must not colour it."""
+    from engine.constructions import anf_quadratic_f2
+
+    _adj, meta = anf_quadratic_f2(13, seed=1)
+    rec = certify_boolean_cayley(meta["boolean_f"], time_limit=0.05, residual_limit=64)
+    _assert(rec.get("residual_skipped") is True, rec)
+    _assert(rec["exact"] is False, rec)
+    _assert(rec["N"] == 8192, rec)
+    _assert(rec["kernel"] == "fwht", rec)
+
+
 def test_fw_small() -> None:
     adj, meta = frankl_wilson(6, 2, (1,))
     _assert(adj.shape[0] == 15, "C(6,2)")
@@ -95,6 +107,7 @@ def main() -> int:
         test_fwht_hadamard,
         test_c5_triangle_free,
         test_gq2_order,
+        test_boolean_residual_limit_skips_mcs,
         test_fw_small,
     ]
     failed = 0

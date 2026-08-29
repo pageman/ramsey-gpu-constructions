@@ -84,7 +84,7 @@ Environment (see `runpod.env.example`):
 | then | `3a` | block-circulant ILS | diagonal \(R(k,k)\) |
 | | `3b` | circulant | \(R(4,k)\), \(k=5..20\) |
 | | `3c` | GQ scale-up | large-\(t\) \(R(4,t)\) |
-| | `3d` | ANF search | \(n=13..16\) |
+| | `3d` | ANF search | \(n=13..16\), FWHT only if residual \(>64\) (prints every trial) |
 
 Also set `RAMSEY_SCALE=runpod`. Base image pin: `runpod/pytorch:1.0.3-cu1281-torch280-ubuntu2404`.
 

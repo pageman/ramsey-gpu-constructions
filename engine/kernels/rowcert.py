@@ -168,7 +168,17 @@ def certify_circulant_row(row: np.ndarray, time_limit: float = 1.0, paley_q: int
     return _pack_cert(n, om, al, spec, cspec, triangles, "circulant", "fft", extra)
 
 
-def certify_boolean_cayley(f: np.ndarray, time_limit: float = 1.0) -> dict:
+def certify_boolean_cayley(
+    f: np.ndarray,
+    time_limit: float = 1.0,
+    residual_limit: int | None = None,
+) -> dict:
+    """Boolean Cayley certificate from the length-N truth table.
+
+    ``residual_limit``: if |N(0)| or |N^c(0)| exceeds this, skip induced-subgraph
+    MCS / greedy colouring and keep Hoffman–Delsarte only. ``None`` means never
+    skip (legacy). Job 3d passes 64 so runpod n=13..16 cannot hang in colouring.
+    """
     f = np.asarray(f, dtype=np.uint8).copy()
     f[0] = 0
     n = int(f.size)
@@ -180,10 +190,15 @@ def certify_boolean_cayley(f: np.ndarray, time_limit: float = 1.0) -> dict:
     cspec = spectral_bounds_from_eigs(cevals, n)
     S = np.flatnonzero(f)
     Nc = np.array([i for i in range(1, n) if f[i] == 0], dtype=np.int64)
-    sub = _induced_f2(f, S)
-    csub = _induced_f2(cf, Nc)
-    om_inner = max_clique(sub, time_limit=time_limit) if sub.shape[0] else {"lower": 0, "upper": 0, "exact": True}
-    al_inner = max_clique(csub, time_limit=time_limit * 0.5) if csub.shape[0] else {"lower": 0, "upper": 0, "exact": True}
+    skip = residual_limit is not None and (S.size > residual_limit or Nc.size > residual_limit)
+    if skip:
+        om_inner = {"lower": 0, "upper": n, "exact": False}
+        al_inner = {"lower": 0, "upper": n, "exact": False}
+    else:
+        sub = _induced_f2(f, S)
+        csub = _induced_f2(cf, Nc)
+        om_inner = max_clique(sub, time_limit=time_limit) if sub.shape[0] else {"lower": 0, "upper": 0, "exact": True}
+        al_inner = max_clique(csub, time_limit=time_limit * 0.5) if csub.shape[0] else {"lower": 0, "upper": 0, "exact": True}
     om = {
         "lower": om_inner["lower"] + 1,
         "upper": om_inner["upper"] + 1,
@@ -196,7 +211,22 @@ def certify_boolean_cayley(f: np.ndarray, time_limit: float = 1.0) -> dict:
         "exact": al_inner["exact"],
         "reduced_n": int(Nc.size),
     }
-    return _pack_cert(n, om, al, spec, cspec, -1, "f2_cayley", "fwht", {"degree": int(S.size)})
+    return _pack_cert(
+        n,
+        om,
+        al,
+        spec,
+        cspec,
+        -1,
+        "f2_cayley",
+        "fwht",
+        {
+            "degree": int(S.size),
+            "residual_skipped": bool(skip),
+            "nbhd_n": int(S.size),
+            "residual_n": int(Nc.size),
+        },
+    )
 
 
 def materialize_if_small(row: np.ndarray, limit: int = 256) -> np.ndarray | None:

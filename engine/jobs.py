@@ -424,21 +424,53 @@ def job_3c() -> list[dict]:
 
 
 def job_3d() -> list[dict]:
-    """Quadratic ANF search on F_2^n, n=13..16 (local: 8–9). explicit-diag."""
+    """Quadratic ANF search on F_2^n, n=13..16 (local: 8–9). explicit-diag.
+
+    Runpod n≥13 residuals are ~N/2 ≫ 64. Colouring those has no timeout and no
+    log line (the hung PID 18717). This job prints every trial and skips MCS
+    when the residual is wider than Tomita (spectral / FWHT only).
+    """
     lim = limits()
+    n_trials = int(lim["anf_trials"])
+    bits = tuple(lim["anf_bits"])
+    residual_limit = 64
+    print(
+        f"  [3d] bits={bits}  trials={n_trials}  residual_limit={residual_limit}  "
+        f"(MCS only if |N(0)| and |N^c(0)| ≤ {residual_limit}; else FWHT/Hoffman)",
+        flush=True,
+    )
     rows = []
-    for n_bits in lim["anf_bits"]:
+    for n_bits in bits:
+        n = 1 << n_bits
+        print(f"  [3d] --- n_bits={n_bits}  N={n} ---", flush=True)
         best = None
         best_sc = 1e18
         best_pair = None
-        for trial in range(lim["anf_trials"]):
-            adj, meta = anf_quadratic_f2(n_bits, seed=trial + 1)
-            cert = certify_boolean_cayley(meta["boolean_f"], time_limit=0.05)
+        for trial in range(n_trials):
+            t0 = time.perf_counter()
+            print(f"  [3d] n={n_bits} trial {trial + 1}/{n_trials} seed={trial + 1}  ANF…", flush=True)
+            _adj, meta = anf_quadratic_f2(n_bits, seed=trial + 1)
+            f = meta["boolean_f"]
+            deg = int(np.asarray(f).sum())
+            print(
+                f"  [3d] n={n_bits} trial {trial + 1}/{n_trials}  ANF {time.perf_counter() - t0:.2f}s  "
+                f"|S|={deg}  |Nc|={n - 1 - deg}  cert…",
+                flush=True,
+            )
+            t1 = time.perf_counter()
+            cert = certify_boolean_cayley(f, time_limit=0.05, residual_limit=residual_limit)
+            skipped = cert.get("residual_skipped")
+            print(
+                f"  [3d] n={n_bits} trial {trial + 1}/{n_trials}  cert {time.perf_counter() - t1:.2f}s  "
+                f"k>{cert['k_certified']}  exact={cert['exact']}  "
+                f"skip_mcs={skipped}  N^{{1/k}}={cert['n_1_over_k']:.4f}",
+                flush=True,
+            )
             sc = max(cert["omega_upper"], cert["alpha_upper"])
             if sc < best_sc or (sc == best_sc and cert["n_1_over_k"] > (best["n_1_over_k"] if best else 0)):
                 best_sc = sc
                 best = cert
-                best_pair = (meta["boolean_f"], meta)
+                best_pair = (f, meta)
         if best_pair:
             rows.append(emit_boolean(best_pair[0], best_pair[1], best, "3d", "explicit-diag"))
     return rows
