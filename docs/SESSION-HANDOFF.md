@@ -221,19 +221,22 @@ Legend: **E** explicit (said in chat/README) · **I** implicit (in code/docs, no
 | M25 | I | `write_ledger` overwrites claims with **this job only**, not a merge. |
 | M26 | I | `catalog.json` triplicated (`data/`, `public/data/`, `src/data/`). |
 
-### 4.3 Planned, not implemented (`docs/plan-move-a-number.md`)
+### 4.3 Planned, not implemented (`docs/plan-move-a-number.md` **v2**)
+
+v2 (29 Aug 2026) rewrites the algorithm from A40 evidence: jobs 2a/3b proved Hoffman ILS does not move a cell; `max_clique` \(n>64\) cannot certify Yu’s residual. SAT/CliSAT/MoMC and GPU MCS are **deprioritized** — one bitset Östergård/Tomita in decision mode first. Implementation order is the table in the plan (§10): MCS → residual-from-row → Yu \(S\) gate (`data/yu_r4_20.json`) → process → job 4a dry-run → A40 night.
+
 | ID | Kind | Box |
 |---|---|---|
-| M27 | E | Bitset MCS to n~256 + Russian dolls + OpenMP flatten depth≤2. CPU, not GPU BnB. |
-| M28 | E | Decision API `clique_at_least` / `independent_set_at_most`. |
-| M29 | E | SAT/CP-SAT fallback (CliSAT/Kissat/OR-Tools) for dense residuals. |
-| M30 | E | Incremental Schur / \(K_4\) bitset filters \(O(n/64)\). |
-| M31 | E | Job 4a Yu-pool: primes 200–400, e∈{4,5,8,10}, 2-class pools, restricted \(K_4\)-free process, anneal/tabu/BLS, shortlist, exact residual. Targets 241, 251, 269. |
-| M32 | E | Job 4b: rewrite 2c for \(t\ge 50\) and polycirculant; recertify Furini certificates; do not compete IP paper on 24–49. |
-| M33 | E | Job 4c: exact \(\alpha\) on GQ after \(K_4\)-clean, q≤7. |
-| M34 | E | GPU role = batched bitset *filters*, not MCS trees. |
+| M27 | E | Bitset MCS to n~256, **decision** \(\alpha\le t-1\). CPU, not GPU BnB. |
+| M28 | E | Decision API `clique_at_least` / `independent_set_at_most`. Abort on witness or colour-bound death. |
+| M29 | I | SAT/CP-SAT (CliSAT) only if a residual at \(n\sim 220\) exceeds ~10 s after colour-bound Tomita is tight. |
+| M30 | E | Incremental Schur / triangle filter \(O(|S|)\); never \(O(d^3)\) \(K_4\) on all vertices. |
+| M31 | E | Job 4a Yu-pool: primes 200–400, e∈{4,5,8,10}, 2-class pools, restricted process, greedy-\(\alpha\) reject, lex-min, exact residual. Targets 241, 251, 269. |
+| M32 | E | Job 4b: rewrite 2c for \(t\ge 50\) and polycirculant; do not compete IP paper on 24–49. |
+| M33 | E | Job 4c: exact \(\alpha\) on GQ after \(K_4\)-clean, **q=7 only** first. |
+| M34 | E | GPU role = batched legality + greedy reject, not MCS trees. |
 | M35 | E | Reproduce Yu’s published \(S\) as a regression **before** any A40 search. |
-| M36 | I | Cython/numba on MCS inner loop; pure numpy Python is the present bottleneck. |
+| M36 | I | numba/C on MCS inner loop only after the Python bitset is correct on Yu’s residual. |
 
 ### 4.4 Families implemented vs not
 | ID | Kind | Box |

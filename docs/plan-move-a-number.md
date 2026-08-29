@@ -1,363 +1,542 @@
-# Plan: GPU algorithms that can actually move a number
+# Plan v2: GPU algorithms that can actually move a number
 
-This is an implementation plan, not a research essay. The target is a **published finite lower bound** in Radziszowski DS1 (rev. 18, 2026), not Erdős #78 and not \(N^{1/k}\).
+Supersedes the first `plan-move-a-number.md`. Same target: a **published finite
+lower bound** in Radziszowski DS1, not Erdős #78. What changed is the
+algorithm, not the ranking of families.
 
-Current kernels already know the right *identities* (VT reduction, FFT spectrum, sum-free \(\Leftrightarrow\) triangle-free, distance-space ILS). They spend the budget on the wrong *objective* and cannot *certify* the graphs that would move a cell.
+The A40 wave (jobs 1a–3c, 2a done 99755 s / 9288 Hoffman rows) is now
+evidence, not a plan. It proved three negative theorems about *this* codebase:
+
+1. Ranking whole cyclotomic class unions by Hoffman (job 2a, every prime
+   \(p\le 9973\)) does not produce a survey cell. Paley exact \(\omega\) in
+   this range is already in Shearer / Exoo. 9973 is just `cyclo_max`.
+2. Job 3b’s circulant ILS for \(R(4,t)\) used Hoffman as the *search score*
+   and never recertified Yu’s published \(S\). Wrong objective, no certificate.
+3. `max_clique` for \(n>64\) is a 64-core subsample plus a Python greedy
+   colouring that **has no timeout**. That is why 3d looks hung and why Yu’s
+   186-vertex residual is unreachable. The kernel gap, not the family list,
+   is why no number moved.
+
+v2 is therefore a **solver + search-space** plan. Families stay Yu / distance
+circulant / polarity. The algorithm is rewritten from Yu’s paper, the 2024–26
+clique-solver instance-space, Coniglio’s IP paper, and the CP / Polymath
+toolkit that actually applies at \(n\sim 250\).
 
 ---
 
-## 0. What “move a number” means
+## 0. One sentence
 
-A graph \(G\) on \(n\) vertices with \(\omega(G)<s\) and \(\alpha(G)<t\) is a theorem: \(R(s,t)\ge n+1\). Spectral \(k\) is not a theorem. Hoffman-\(k\) on Paley(997) will never enter the survey.
+Cheap **filter** in the search loop; exact **decision** \(\alpha\le t-1\) in
+the certificate; **never Hoffman** in either; **never** materialise the
+\((p/2)\times(p/2)\) residual as a dense `numpy` matrix.
 
-Three attack surfaces, ranked by chance of a survey entry:
-
-| # | Attack | Survey cells | Witness size | Status in this repo |
-|---|---|---|---|---|
-| **A** | Yu-style 2-class cyclotomic *subsets*, \(K_4\)-free process, exact \(\alpha\) on \(N^c(0)\) | \(R(4,20)\)–\(R(4,25)\); Yu has \(R(4,20)\ge 252\) on order 251 | \(n\in[200,400]\), residual \(\sim 150\)–\(250\) | Job 3B does unrestricted Hoffman ILS. **Wrong search, weak cert.** |
-| **B** | Distance-space circulant \(R(3,t)\), exact residual \(\alpha\) | \(R(3,24)\)–\(R(3,49)\); Coniglio et al. Aug 2026 already took +1..+11 on 25 cells | \(n\le 410\) | Job 2C: sum-free ILS, Hoffman score, MCS only to \(n\le 64\). |
-| **C** | Exact \(\alpha\) on GQ / unital polarity after \(K_4\)-deletion | concrete \(R(4,t)>N\) at small \(q\) | \(q\le 9\) exact; \(q=11,13\) decision | Jobs 1C/3C emit Hoffman on the *raw* polarity graph. |
-
-Jobs 4 (Ihringer–Mattheus \(TG_{d,h}\)) and 5 (polynomial Paley-like) are catalogue. They do not move a survey cell on an A40 weekend. Do not schedule them ahead of A–C.
-
-**Hard rule:** search uses a *cheap filter*; only a shortlist is handed to an *exact decision* solver \(\alpha\le t-1\) / \(\omega\le s-1\). Never score the ILS loop with Hoffman.
+If a candidate cannot be rejected in \(O(p)\) or certified on a bitset of
+width \(p\), it is not a job for this A40.
 
 ---
 
-## 1. Why the current kernels cannot move a number
+## 1. What “move a number” means (unchanged, tighter)
 
-Read against `engine/kernels/{cayley,mcs,rowcert,spectrum}.py`.
+\(G\) on \(n\) vertices, \(\omega(G)<s\), \(\alpha(G)<t\) \(\Rightarrow\)
+\(R(s,t)\ge n+1\). Spectral \(k\) is a ranking key, not a theorem.
 
-| Bottleneck | What the code does | Why it blocks a bound |
+| # | Attack | Cells | Witness | Why v1 failed | v2 change |
+|---|---|---|---|---|---|
+| **A** | Yu-style 2-class *subsets* | \(R(4,20)\)–\(R(4,25)\); beat 252 | \(p\in[200,400]\), residual \(\sim 150\)–\(250\) | 3b = Hoffman ILS on unrestricted masks | Restricted process on the 50-set pool + bitset decision MCS |
+| **B** | Distance-space circulant \(R(3,t)\) | \(t\ge 50\) only | \(n\sim 500\)–\(900\) | 2c competed with Coniglio on \(t\le 49\); Hoffman score; MCS \(n\le 64\) | Incremental Schur filter + exact residual \(\alpha\); skip 24–49 |
+| **C** | Polarity after \(K_4\)-delete | concrete \(R(4,t)>N\) at \(q\le 7\) | residual a few hundred | 1c/3c Hoffman on the *raw* graph | Delete \(K_4\)s, then exact \(\alpha\); \(q\ge 8\) is a maybe |
+
+Catalogue (do not hunt): Ihringer–Mattheus \(TG_{d,h}\); Yip polynomial Paley.
+Do not run: extractors, Bradač containers, PPO, more Paley / full class unions,
+job 3d \(n=16\), AlphaEvolve-on-the-pod.
+
+---
+
+## 2. Why the current kernels cannot move a cell
+
+Concrete, from this repo, not from taste.
+
+| Kernel | What it does | Why it blocks a cell |
 |---|---|---|
-| **Wrong objective** | `_score_row` = \(\max(\alpha_{\mathrm{Hoff}}(G),\alpha_{\mathrm{Hoff}}(\bar G))\) | Yu maximised \(\lvert S\rvert\) among \(K_4\)-free subsets of a 50-element pool, then *proved* \(\alpha=19\). Hoffman is a loose \(\alpha\) *upper* bound; minimising it does not produce \(K_4\)-free dense witnesses. |
-| **MCS dies at \(n>64\)** | `max_clique` takes the 64 highest-degree vertices and greedy-colours the rest | Yu’s residual has **186** vertices. A 64-core subsample cannot certify \(\alpha\le 19\). |
-| **No decision mode** | Always computes \(\omega\), never “is \(\alpha < t\)?” | Decision with a target is \(10\)–\(100\times\) faster (Östergård prune \(c[i]\), early abort). |
-| **Full FFT every flip** | ILS rebuilds the row and FFTs \(G\) and \(\bar G\) each step | Flip of distance \(d\) updates every eigenvalue in **\(O(n)\)**: \(\lambda_j \gets \lambda_j \pm 2\cos(2\pi jd/n)\). Hoffman is not needed in the loop anyway. |
-| **`incremental_triangle_delta` unused** | Exists, never called from `ils_connection_set` | Triangle / \(K_4\) filters should be \(O(n)\) / \(O(d)\) bitset, not a fresh convolution. |
-| **\(K_4\) test is \(O(d^3)\)** | Triple loop over \(S\) | Induced \(G[S]\) is triangle-free iff no Schur triple in \(S\) among neighbours of a new point. Bitset: \(O(d^2/64)\) or \(O(d)\) incremental on add. |
-| **No cyclotomic *pool*** | 2A enumerates *whole class unions*; 3B ILS is unrestricted on \(\lfloor n/2\rfloor\) bits | Yu searched a **32-subset of a 50-element pair of classes**. The mask argument of `ils_connection_set` is wired and unused by any job. |
-| **No multiplier canonicalisation** | Every \(\lambda S\) for \(\lambda\in(\mathbb Z/n)^\times\) is isomorphic | Search space is \(\varphi(n)\) too large. Keep lex-min under multiplication. |
-| **No Russian-doll / matching colour** | Greedy colour via Python `set` | Yu: smallest-last + matching colour bound on the complement + \(c[i]=\alpha(G[\{i,\ldots\}])\). |
-| **Two-block ILS materialises \(n\times n\)** | `two_block_adj` then greedy clique | For \(n>80\) this is the wrong representation. Stay in \(O(n)\) rows. |
+| `max_clique` \(n>64\) | 64-core subsample + `greedy_colour_bound` | Yu certifies \(\alpha=19\) on 186 vertices by **full** BnB. A 64-subset \(\omega\) is a lower bound on \(\omega\), an *upper* bound on \(\alpha\) of a *different graph*. Not a certificate. |
+| `greedy_colour_bound` | Python loop, no timeout | 3d n=13 residual is \(4096\times 4096\). Colouring can run for hours with no log. |
+| `ils_connection_set` | score = Hoffman(\(G\))+Hoffman(\(\overline G\)) | Hoffman on Paley-like graphs is \(\sim\sqrt n\). Every mask looks the same. The ILS has no gradient toward \(\omega\le 3\), \(\alpha\le 19\). |
+| `mask=` argument | implemented, **never called by a job** | Yu’s space is \(\binom{50}{32}\) inside \(D_0\cup D_2\). Jobs 2a/3b search the wrong set. |
+| `incremental_triangle_delta` | implemented, unused | \(K_3\)-free ILS rebuilds \(A^3\) or scans \(O(d^2)\). |
+| `certify_boolean_cayley` / `certify_circulant_row` | materialises induced \(N\times N\) | 2a spent ~28 h building neighbourhoods of size \(\sim p/2\). Yu never does this. |
+| Job 3A | docstring “from 2A winners”; code seeds Paley+Singer | Dead wiring. |
+| `catalog.json` | last-writer-wins | Two jobs cannot run. `registry.jsonl` is the source of truth. |
+| Job 2a | no checkpoint | Restart = p=13. The 28 h rerun was this. |
+
+v2 does not “add job 4a on top of 3b”. It replaces the objective, the
+certificate, and the memory layout.
 
 ---
 
-## 2. Shared kernel upgrades (do these first)
+## 3. Yu’s algorithm, as actually published (arXiv:2608.18169)
 
-Every later job is blocked on the certifier. Ship these before any new search.
+Read this before writing a kernel. The paper is **not** “cyclotomic +
+Hoffman”. It is a three-stage pipeline on one prime.
 
-### 2.1 Word-RAM MCS that survives \(n\sim 256\) — `engine/kernels/mcs.py`
+**Stage 0 — pool.** Prime \(p=251\), \(e=5\), classes
+\(D_i = g^i\langle g^5\rangle\). Pool \(P = D_0\cup D_2\), \(|P|=50\).
+\(-1\in\langle g^e\rangle\) so the Cayley graph is undirected.
+Connection set \(S\subset P\), \(|S|=32\), \(S=-S\).
 
-Replace the \(n>64\) “core subsample” with a real bit-parallel solver. Literature stack, in the order Yu / Prosser actually used:
+Published witness (the regression test; if this fails, the cert is wrong):
 
-1. **Bitset adjacency**, `uint64` limbs, already sketched in `pack_neighbours`. Finish it: `P`, `X`, `R` as limb arrays; intersection = `AND`; popcount = `np.bitwise_count` / `__builtin_popcountll`.
-2. **Smallest-last / degeneracy order** (MCR / BBMC). Current `degeneracy_order` is \(O(n^2)\) numpy `argmin`. Batagelj–Zaversnik **bucket queue** is \(O(n+m)\).
-3. **Tomita MCS pivot** on limbs (already in `_mcs_small` for \(n\le 64\)). Lift to multi-word.
-4. **Greedy colour bound via bitsets**, not Python `set` (San Segundo BBMC). Recolouring (MCS, Tomita–Sutani) if the first colouring does not prune.
-5. **Greedy matching colour bound on the complement** (Yu §5). Cheap, often tighter than greedy colour on circulant residuals.
-6. **Östergård Russian dolls** \(c[i]=\omega(G[\{v_i,\ldots,v_{n-1}\}])\) in the static order. Prune: `depth + c[min P] < target`. This is the single highest-leverage prune for *decision*.
-7. **Decision API**: `clique_at_least(adj, k, time_limit) -> bool` and `independent_set_at_most(adj, t, ...)`. Search calls these, not exact \(\omega\).
-8. **Flatten first two branch levels** into independent work items (Yu: 12 OpenMP threads, \(2.7\cdot 10^7\) nodes, 1.4 s on a 186-vertex residual). On the A40: CPU OpenMP for the BnB tree (irregular; GPUs lose), GPU only for batched *filters* (see §3).
+```
+S = {2, 4, 8, 10, 16, 21, 32, 37, 39, 42, 45, 63, 64, 73, 74, 78,
+     84, 90, 91, 105, 126, 128, 146, 147, 148, 156, 168, 180,
+     189, 210, 233, 243}
+```
 
-Instance-space note (arXiv:2512.03419): dense, uniform, small-diameter graphs (circulant residuals) favour **CliSAT / Gurobi**; sparse hub graphs favour **MoMC**. Circulant \(N^c(0)\) is dense-ish. Keep a SAT fallback:
+\(\omega(G)=3\), \(\alpha(G)=19\), hence \(R(4,20)\ge 252\).
 
-- Encode \(\exists\) independent set of size \(t\) as SAT (at-most-one on edges of \(G\), cardinality \(t\)). Kissat / Cadical are faster than a mediocre BnB on some densities.
-- CP-SAT maximisation for the *lower* bound \(\alpha\ge\cdot\) (Yu used this to get 18, then BnB to rule out 19).
+**Stage 1 — restricted \(K_4\)-free process (search, cheap).**
+Maintain \(S\) growing inside \(P\). A candidate \(x\in P\setminus S\) is
+legal iff \(N(0)\) stays triangle-free after adding \(\pm x\).
+Equivalently: no pair \(a,b\in S\) with \(a-b\in S\) and
+\(\{a,b,a-b\}\) all in the new neighbourhood — the Schur / additive
+formulation. Yu also runs simulated annealing on the same pool after the
+process saturates.
 
-Do **not** write a GPU BnB for \(n=186\). IPDPS 2025 “Less is More” and 2024 many-core MCS win on *sparse million-vertex* graphs. Our residuals are the opposite: tiny, dense, need strong bounds. CPU bitset + OpenMP is the SOTA for this shape (Yu, Prosser, BBMC).
+This is **not** “enumerate \(\binom{50}{32}\)”. It is a filtered walk on a
+50-element ground set. An A40 can run thousands of independent walks; it
+does not need to store 50-choose-32.
 
-### 2.2 \(O(n)\) Cayley filters — `engine/kernels/cayley.py`
-
-**Eigenvalues, if ever needed.** Symmetric circulant, flip distance \(d\) (and \(n-d\)):
+**Stage 2 — certificate (exact, once per survivor).**
+Vertex-transitive \(\Rightarrow\)
 
 \[
-\lambda_j \;\leftarrow\; \lambda_j \;+\; \sigma\cdot 2\cos\bigl(2\pi j d / n\bigr),
-\quad \sigma\in\{+1,-1\}.
+\omega(G)=1+\omega(G[N(0)]),\qquad
+\alpha(G)=1+\alpha(G[N^c(0)]).
 \]
 
-Precompute the cosine table once per \(n\). Update in \(O(n)\), maintain running \(\lambda_{\max},\lambda_{\min}\) in the same pass. **Do not call this inside the \(K_4\)-free process.** Keep it for optional post-hoc Hoffman on the shortlist.
+- \(N(0)=S\), \(|S|=32\). \(\omega(G[S])\le 2\) (triangle-free) is the
+  process invariant. Check by bit-AND of neighbourhoods, \(O(|S|^2/64)\).
+- \(N^c(0)=(\mathbb Z/p)^\times\setminus S\), 186 vertices. \(\alpha(G)=19\)
+  iff the maximum clique of the **complement** residual is 19, iff
+  \(\omega(\overline{G}[N^c(0)])=19\). Yu runs a bitset MCS (they cite the
+  Tomita family) and report ~1.4 s for this one residual.
 
-**Triangle-free / Schur (job B).** Maintain the convolution \(c = S*S\) as an integer array of length \(n\). Flipping \(d\):
+**What Yu does not do:** Hoffman, FFT, whole-class unions, GNN, IP on the
+full edge set.
+
+**What job 2a did:** every mask of *whole* classes, Hoffman only, \(p\) to
+9973. Different search space, different (non-)certificate. Do not recertify
+2a’s 9288 rows hoping one is Yu-like. A whole-class union that is \(K_4\)-free
+with small \(\alpha\) would already be a Paley / GP cousin and would have
+shown up in the survey.
+
+---
+
+## 4. The only data structure that matters
+
+Store the connection set as a **length-\(p\) bitset** (four `uint64` at
+\(p=251\); seven at \(p=400\)).
+
+Circulant adjacency: \(i\sim j\) iff `row[(j-i) mod p]` is set. Vertex 0’s
+neighbourhood *is* the row. The residual \(G[N^c(0)]\) is **not** a matrix.
+Vertex \(u\in N^c(0)\) has residual neighbours
 
 \[
-c \;\leftarrow\; c \;+\; \sigma\cdot\bigl(\mathrm{roll}(S,d)+\mathrm{roll}(S,-d)\bigr)
+v\in N^c(0),\quad v\neq u,\quad (v-u)\bmod p\in S.
 \]
 
-plus the \(2d\) diagonal term, all \(O(n)\). Triangle exists iff \(c[s]>0\) for some \(s\in S\setminus\{0\}\). Incremental check of the *new* distance only is \(O(\lvert S\rvert)\): scan \(x\in S\) and test \(d-x\in S\) (bitset).
+A bitset MCS on the residual needs, for each residual vertex \(u\), one
+bitset of width \(|N^c(0)|\) — the columns of the induced graph. Build that
+in \(O(p\cdot |N^c|/64)\) from the **row**, once, then throw the dense
+matrix away. Never allocate \(186\times 186\) `float64`.
 
-**\(K_4\)-free (job A).** Circulant is \(K_4\)-free \(\Leftrightarrow\) \(G[N(0)]\) is triangle-free \(\Leftrightarrow\) the set \(S\) induces no triangle. Adding \(d\):
+This is the O(n) rule the first plan stated and the kernels violated.
 
-- \(N_S(d)=\{x\in S: d-x\in S\}\)  (`AND` of bitset \(S\) with `roll(S, d)`), \(O(n/64)\).
-- Accept iff \(N_S(d)\) is independent in \(G[S]\): for all \(x,y\in N_S(d)\), \(y-x\notin S\). Bitset: for each \(x\in N_S(d)\), `(N_S(d) AND roll(S, x)) == 0`.
-
-That is Yu’s “restricted cyclic \(K_4\)-free process” in \(O(d\cdot n/64)\) per candidate, not \(O(d^3)\).
-
-Store \(S\) as:
-
-- a `uint64` bitset of length \(\lceil n/64\rceil\) (membership),
-- a packed list of the \(\lfloor n/2\rfloor\) *undirected* distances (the true decision variables).
-
-Never rebuild `row_from_bits` by Python loops in the inner loop (`cayley.py:48–56`).
-
-### 2.3 Multiplier orbit — `engine/kernels/sieve.py`
-
-Two circulants with \(T=\lambda S\bmod n\), \(\gcd(\lambda,n)=1\), are isomorphic (multiplier). Canonical key: lex-min of \(\{\lambda S: \lambda\in(\mathbb Z/n)^\times, \lambda\le n/2\}\) packed as a bitset integer (or Zobrist hash + lex bitstring). Dedup before exact cert. Cuts the Yu pool search by \(\sim\varphi(n)/2\).
-
-For prime \(n=p\), \((\mathbb Z/p)^\times\) is cyclic; it is enough to try \(\lambda = g^0,\ldots,g^{(p-3)/2}\).
-
-### 2.4 Tests that lock the certifier
-
-Extend `engine/test_kernels.py`:
-
-- Paley(17): decision \(\alpha\le 3\) on the 8-vertex residual, Russian-doll \(c[i]\).
-- C5: triangle-free incremental vs FFT convolution.
-- Flip one Paley(17) distance: \(O(n)\) eigenvalue update vs `fft_eigenvalues`.
-- Quintic classes mod 251: reproduce Yu’s Table 1 distances \(D_0,\ldots,D_4\) (hardcoded regression).
-- Yu’s \(S\) of size 32: `k4_free_via_neighbourhood` true; residual order 186; *decision* \(\alpha\le 19\) (this is the integration test — allow a few seconds).
-- Multiplier: \(S\) and \(116S\bmod 251\) hash equal.
-
-Until the Yu \(S\) certifies in this repo, do not run a 2000-step ILS on the A40.
+Memory at \(p=400\), residual 300: \(300\times 5\) uint64 \(\approx 12\) KB
+for the MCS bitsets. An A40 can hold tens of thousands of residuals. The
+bottleneck is the *CPU* BnB on each residual, not VRAM.
 
 ---
 
-## 3. Job A — Yu-pool \(R(4,t)\) (highest leverage)
+## 5. Algorithmic upgrades, ranked by effect on a cell
 
-New job `4a` / rewrite `3b`. This is the only job with a realistic shot at \(R(4,21)\) or beating 252.
+Literature and CP, only the tricks that change the **certificate** or the
+**filter**. Asymptotic romance (better Hoffman, better \(\vartheta\),
+extractor seed) is excluded.
 
-### 3.1 Search space (algebra, not ML)
+### 5.1 Decision, not optimisation (CP / LeetCode binary-search-on-answer)
 
-For each prime \(p\in[200,400]\) (extend to 521 if A40 is idle):
+Survey cell \(R(4,t)\ge p+1\) needs \(\alpha\le t-1\), not \(\alpha\) exactly.
+Östergård’s algorithm (Discrete Applied Math 2002) is designed for this:
+colour-bound clique search that **stops when the incumbent reaches \(t-1\)**.
+Yu needed the exact 19 to publish \(\alpha=19\). We need \(\alpha\le 20\) to
+claim \(R(4,21)\ge p+1\). Abort the BnB the moment a clique of size \(t-1\)
+is found — that *rejects* the candidate. Abort as **proven**
+\(\omega_{\mathrm{comp}}<t-1\) when the colour bound dies. Do not sit in
+optimisation mode for 1.4 s if a 20-clique appears at 50 ms.
 
-1. Factor \(p-1\). Keep indices \(e\in\{4,5,8,10\}\) that divide \(p-1\).
-2. Require \(-1\in H=(\mathbb F_p^\times)^{(p-1)/e}\) so each cyclotomic class folds to an undirected distance set \(D_r\) of size \((p-1)/(2e)\). (Yu: \(e=5\), \(p=251\), \(\lvert D_r\rvert=25\).)
-3. For each pair \(\{D_r,D_s\}\) (10 pairs when \(e=5\)), form the pool \(P=D_r\cup D_s\), \(\lvert P\rvert\sim 50\).
-4. Pre-filter pairs: a pair is *viable* if it admits a \(K_4\)-free subset of size \(\ge \tau(p)\) with \(\tau(p)\approx 0.12\,p\) (Yu: 31 out of 50). Probe with 32 random restricted-process runs; drop dead pairs (Yu dropped 5 of 10).
+This is the highest-leverage change vs “run Tomita to completion”.
 
-Decision variables: a subset \(S\subset P\), \(\lvert S\rvert\in[k_{\min},k_{\max}]\), \(S=-S\) automatic because each \(D_r\) is folded. For \(p=251\), Yu used \(31\le k\le 38\). That is \(\binom{50}{32}\approx 4.7\cdot 10^{13}\) — not enumerable. Generation is a **process**, not a mask sweep.
+### 5.2 Bitset Tomita / MCS, width \(n\le 256\) (Yu; Tomita–Sutani; San Segundo)
 
-### 3.2 Generator: restricted \(K_4\)-free process + annealing (Yu §3)
+Replace `max_clique`’s \(n>64\) subsample with a real bitset solver:
 
-CP / statistical-physics, not PPO.
+- Adjacency: `uint64[n][(n+63)//64]`.
+- Colour order: greedy colouring on the bitset (San Segundo / BBMC style).
+- Recursion: `P & N[v]`, popcount, branch on the colour-bound cut.
+- Optional: **bitset complement** so \(\alpha(G)=\omega(\overline G)\) is the
+  same code path Yu uses.
 
-**Phase 1 — process (Rödl nibble / triangle-free process analogue).**  
-Start from \(S=\emptyset\). Repeatedly add a uniform unused \(d\in P\) such that \(G[S\cup\{\pm d\}]\) stays triangle-free (the \(O(n/64)\) test of §2.2). Stop when no legal add remains. This is the cyclic analogue of the Bohman–Keevash triangle-free process, restricted to a 50-element ground set (so it is cheap).
+Python + `numpy` uint64 is fine for \(n\le 220\) if the inner loop is tight
+(numba, or a 50-line C extension). Do **not** start from NetworkX. Do **not**
+call the current `greedy_colour_bound` as a substitute for the BnB.
 
-**Phase 2 — simulated annealing inside the same pool.**  
-Neighbourhood: flip / swap one pool distance, reject if \(K_4\) appears. Objective for the annealer is **not** Hoffman:
+Instance-space (San Segundo / CliSAT / MoMC 2024–26): sparse DIMACS and
+crafted hard graphs need different solvers. **Circulant residuals are not
+DIMACS random.** They are vertex-transitive leftovers: regular, structured,
+colour-bound usually tight. CliSAT’s SAT encoding and MoMC’s recency
+weighting are for a different instance class. Implement **one** bitset
+Östergård/Tomita well before shopping solvers. If a residual at \(n=220\)
+exceeds ~10 s with a colour bound, *then* try a second solver, not before.
 
-\[
-f(S) = \begin{cases}
-\infty & \text{if not }K_4\text{-free},\\
--\lvert S\rvert + \lambda\cdot \widehat\alpha_{\mathrm{greedy}}(G[N^c(0)]) & \text{otherwise}.
-\end{cases}
-\]
+### 5.3 Incremental \(K_3\) / \(K_4\) filter (additive combinatorics + Fenwick)
 
-Greedy \(\alpha\) on the residual is \(O(n)\) (smallest-last or max-degree-in-complement). \(\lambda\approx 2\). Dense \(K_4\)-free \(\Rightarrow\) small residual \(\Rightarrow\) small \(\alpha\), which is exactly Yu’s density bet.
+Yu’s legal-move test: after adding \(x\), \(G[S]\) stays triangle-free.
 
-**Phase 3 — tabu / breakout (Exoo 1998, BLS).**  
-Tabu list = recently flipped distances (length \(1\)–\(3\cdot\lvert P\rvert\)), not whole graphs. After a plateau of \(L\) steps, breakout: drop \(b\) random distances and re-grow with the process (Benlic–Hao breakout local search). Exoo’s “union/disunion of one part of a partition” is the same move in disguise.
+Additive form (circulant): \(S\) is triangle-free in \(G[N(0)]\) iff there
+are no \(a,b\in S\) with \(a-b\in S\) *as an edge of the residual of 0*,
+i.e. no Schur triple in \(S\) relative to the connection set — for a
+Cayley graph on \(\mathbb Z/p\), a triangle on \(\{0,a,b\}\) is
+\(a,b,b-a\in S\). So \(S\) is sum-free in the usual sense **and** the
+neighbourhood graph has no triangle iff \(S\) is \(K_3\)-free as a Cayley
+connection on itself.
 
-**Phase 4 — shortlist.**  
-Keep the Pareto front: \(K_4\)-free, \(\lvert S\rvert\) large, greedy \(\alpha\) small, distinct under multipliers. Budget: \(10^4\)–\(10^5\) process+anneal runs per \((p,\text{pair})\), batched.
+Maintain:
 
-### 3.3 GPU role (honest)
+- `row`: bitset of \(S\).
+- `pair_counts[p]`: number of representations \(s-s'\) with \(s,s'\in S\)
+  that would close a triangle when a new \(x\) is added.
 
-The BnB certifier is CPU. GPU earns its rent on **batched filters**:
+Adding \(x\): scan \(S\) (32 bits), test `row[x-s]`. \(O(|S|)=O(32)\), not
+\(O(d^3)\). Removing \(x\): same. This is the Fenwick / difference-array
+move: store the **delta**, not the graph.
 
-- \(10^5\) candidate bitsets of length 251 fit in a few MB.
-- One CUDA kernel: for each candidate, compute \(N_S(d)\) via batched 256-bit `AND`/`OR` (four `uint64`), reject \(K_4\).
-- Second kernel: greedy \(\alpha\) (32 independent sequential greedy walks per graph, warp-shuffle reductions).
-- Do **not** FFT \(10^5\) rows. Do **not** launch a GPU MCS tree.
+The existing `incremental_triangle_delta` is this idea unused. Wire it.
+Drop the \(O(d^3)\) \(K_4\) scan on the full vertex set — VT says it is
+enough to test \(G[N(0)]\).
 
-A40 occupancy: one grid of candidates, 256 threads/block, bitset in registers / shared. This is a LeetCode “bit DP / bitset convolution” kernel, not a GNN.
+### 5.4 Restricted process + ILS, not Hoffman ILS (Yu; Hansen–Mladenović ILS)
 
-### 3.4 Certification (the actual theorem)
+Search state = subset of the **pool**, not a free \(\{0,1\}^{(p-1)/2}\).
 
-For each shortlisted \(S\):
+```
+process(pool P, target |S| or saturation):
+    S ← ∅
+    while legal moves exist:
+        pick x in P\S uniformly (or by a cheap score: #new illegal)
+        if G[S ∪ {±x}] triangle-free: S ← S ∪ {±x}
+    return S
 
-1. Inspect \(G[N(0)]\) (degree \(\sim 64\)): triangle-free \(\Rightarrow \omega\le 3\). Exact MCS on 64 vertices is milliseconds (`_mcs_small` already works).
-2. Residual \(R=G[N^c(0)]\), \(n_R=p-1-\deg\). **Decision:** no independent set of size \(t\) (i.e. clique of size \(t\) in \(\bar R\)). Target \(t\) from the survey gap: for \(p=251\), Yu used \(t=19\) so \(R(4,20)\ge 252\). For \(p=241\) (old \(R(4,21)\ge 242\)), try \(t=20\).
-3. Reductions before BnB (PMC / KaMIS / unconfined / folding). Circulant residuals may not shrink much; still peel dominated vertices.
-4. Östergård \(c[i]\) + bitset MCS + matching colour. Flatten depth \(\le 2\) across CPU threads.
-5. Independent checker: dump `S` as a sorted list, recompute \(\omega,\alpha\) in a second implementation (bitset vs SAT). Yu-style: CP-SAT for a *lower* bound on \(\alpha\), BnB for the *upper*.
+anneal(S, steps):
+    propose: swap x in S ∩ P with y in P\S (preserve S=-S)
+    accept if still triangle-free and (exact-α-proxy improves or Metropolis)
+```
 
-### 3.5 Meet-in-the-middle and Gray codes (what *not* to do, and when)
+**Score inside the loop (in order, stop early):**
 
-- \(\lvert P\rvert=50\), \(k=32\): MITM \(\binom{25}{16}^2\) is still huge. **Don’t.**
-- Gray-code enumeration of all \(2^{25}\) free bits: \(3\cdot 10^7\), feasible *if* the pair were 25 undirected distances, not 50. For \(e=4\), \(\lvert D_r\rvert=(p-1)/8\); at \(p=313\) quartic residues, one class is already the *whole* connection set of the \(R(4,22)\ge 314\) graph (Lindsay–Cain). Enumerate 2-class *subsets* only when \(\lvert P\rvert\le 40\) *and* \(k\) is extreme; otherwise the process is the right generator.
-- When \(\lvert P\rvert\le 28\) (small \(e\) or smaller \(p\)), Gray-code the subsets of size \(k\) with combinadic rank / revolving-door (Knuth TAOCP 7.2.1.3, CP staple). Incremental \(K_4\) test is \(O(n/64)\) per Gray step.
+1. Illegal \(\to\) reject. \(O(|S|)\).
+2. `|S|` (larger neighbourhood \(\Rightarrow\) smaller residual \(\Rightarrow\)
+   easier \(\alpha\)). Yu sat at 32/50.
+3. Degree of \(G[N^c(0)]\) or a **sampled** greedy-\(\alpha\) (one random
+   permutation, \(O(p)\)). This is a *lower* bound on \(\alpha\). If the
+   greedy already finds an independent set of size \(t\), **reject** — the
+   graph cannot certify \(R(4,t)\). This is the CP “fail fast on a witness”
+   trick. Do not run MCS on a graph that already has a greedy \(\alpha\ge t\).
+4. Hoffman: **never**, except as a catalogue field after a survivor is
+   certified.
 
-### 3.6 Target list (concrete)
+### 5.5 Multiplier automorphism / lex-min (CP Burnside; circulant folklore)
 
-| \(p\) | why | hope |
-|---|---|---|
-| 251 | Yu’s graph; regression + search *other* pairs / sizes 33–38 | \(R(4,19)\ge 252\) or denser \(\alpha\le 18\) |
-| 241 | Su–Luo–Zhang–Li \(R(4,21)\ge 242\) is the weak cell vs 314 | \(\omega\le 3,\alpha\le 20\) |
-| 269, 271, 277, 281, 283 | next primes, mixed \(e\mid p-1\) | \(R(4,21)\) / \(R(4,22)\) |
-| 313 | quartic-residue baseline \(R(4,22)\ge 314\); subsets of two octic classes | long shot |
-| 337, 349, 353, 373, 397 | \(e=4,5\) when they divide | fill \(R(4,23)\)–\(R(4,25)\) gaps |
+If \(S\) is a witness, so is \(\lambda S\) for \(\lambda\in(\mathbb Z/p)^\times\).
+Store only the lex-min rotate-and-multiply representative. When a process
+emits \(S\), replace it by \(\min\{\mathrm{lex}(\lambda S):\lambda\in(\mathbb Z/p)^\times\}\).
+Dedup across GPU walks. This is why Yu can publish one \(S\) and not 250
+rotates.
 
-Do not waste the A40 on \(p>520\) until 241/251/269 have exact certificates.
+Cost: \(O(p\varphi(p)/2)\) bit rotations; at \(p=251\) this is nothing.
+Do it **before** MCS, so 80 walks that found the same orbit burn one cert.
 
----
+### 5.6 Batched filter on GPU, serial cert on CPU (workload split)
 
-## 4. Job B — circulant \(R(3,t)\) (second leverage)
+A40 job layout:
 
-Rewrite `2c`. Coniglio–Ljubić–Furini–Traversi–Thürauf–San Segundo (Optimization Online, 19 Aug 2026) already IP-searched this space to \(n=410\) and moved 25 cells. A me-too Hoffman ILS will not beat Gurobi+cuts. Two remaining angles:
+| Phase | Device | Work | Batch |
+|---|---|---|---|
+| Enumerate primes \(p\in[200,400]\) with \(e\mid(p-1)\), \(-1\in\langle g^e\rangle\) | CPU, once | sieve + discrete log | — |
+| Build 2-class pools (quartic \(p\equiv 1\pmod 8\), quintic \(p\equiv 1\pmod 10\)) | CPU | \(O(p)\) | — |
+| \(10^3\)–\(10^5\) restricted processes + anneal swaps | GPU or batched CPU | legal-move kernel | 10k states × 64-bit row |
+| Greedy-\(\alpha\) reject | CPU vectorised | \(O(p)\) per state | all survivors |
+| Lex-min + unique | CPU | hash of bitset | — |
+| Decision MCS \(\alpha < t\) | **CPU, one core per residual** | bitset BnB | A40 has idle SMs here; that is fine |
+| Ledger row | CPU | append jsonl | — |
 
-### 4.1 Where IP is weak, CP is strong
+Do not write a GPU MCS. San Segundo-style GPU clique is a research project
+and the residuals are few (hundreds of unique \(S\), not millions). The A40
+earns its rent on **batched legality + greedy reject**. The 1.4 s MCS is a
+CPU problem Yu already solved.
 
-- **Larger \(n\)** than 410, if we only need *heuristics + exact cert of a shortlist*, not a proof of circulant-Ramsey optimality. Survey cells \(R(3,t)\) for \(t\ge 50\) are still open to +1 constructions.
-- **Non-prime \(n\)** (IP paper emphasises structure; composite moduli have smaller multiplier groups and more Schur triples — sometimes *better* \(\alpha\) at the same triangle-free density, cf. quadratic residues only when \(n\) prime).
-- **Block-circulant / polycirculant** (Exoo, Mathon, McKinley / Steven-VO): 2-orbit on \(2m\) vertices is still \(O(m)\) bits. Job 3A materialises the matrix; keep two rows and use VT on the *group* \(\mathbb Z_m\rtimes\mathbb Z_2\) (two neighbourhood types). Exact cert: \(\omega=1+\max_i\omega(G[N(v_i)])\) over orbit representatives (usually 2).
+If the process is so cheap that CPU saturates the pool in minutes, skip the
+CUDA kernel. Profile first. A numba legal-move loop on 50-set pools may
+beat a bad GPU launch.
 
-### 4.2 Algorithm
+### 5.7 Prefix / orbit pruning of the pool (IMO combinatorics; Knuth dancing)
 
-1. **Ground set:** undirected distances \(1,\ldots,\lfloor n/2\rfloor\). Triangle-free \(\Leftrightarrow\) \(S\) is sum-free in \(\mathbb Z/n\mathbb Z\) (Schur). Maintain the \(O(n)\) convolution of §2.2.
-2. **Constructor:** odd-order “middle third” \(\{\lceil n/3\rceil,\ldots,\lfloor n/2\rfloor\}\) is the classical maximum sum-free set in \(\mathbb Z/n\) (Yap / Diananda–Yap; Tao–Vu inverse theorems: large sum-free sets are subgroups or progressions). Seed ILS from that, from random, and from Paley when \(n\equiv 1\pmod 4\).
-3. **Moves:** flip one distance; reject if a Schur triple appears (\(O(\lvert S\rvert)\) bitset). Tabu the distance. Objective: greedy \(\alpha\) of \(G\), then exact decision \(\alpha\le t-1\).
-4. **Exact cert:** VT \(\alpha(G)=1+\alpha(G[N^c(0)])\). Residual size \(n-1-2\lvert S\rvert\). For triangle-free circulants aiming at \(R(3,30)\), residual is the bottleneck — same MCS as Job A.
-5. **Do not compete with the IP paper on \(24\le t\le 49\)** unless we have a *different* graph. First recertify their certificates (GitHub `fabiofurini/ramsey-number-lower-bounds`) as a checker test, then hunt \(t\ge 50\) or polycirculant.
+\(\binom{50}{32}\) is \(4.7\times 10^{13}\). Do not enumerate.
+If a *prefix* of the sorted pool already contains a Schur triple, every
+superset dies. Branch-and-bound on the 50-set: add the next pool element
+or not, prune when \(G[S]\) has a triangle, bound when
+\(|S| + |remaining| < s_{\min}\) (Yu needed 32; we can take any even
+\(|S|\) that beats a cell). This is exact search of the pool, complementary
+to the random process. Run it on the **three** primes nearest Yu (241, 251,
+269) where a missed 33-subset would be embarrassing. Do not B&B the pool
+at every prime in 200–400.
 
-### 4.3 Additive-combinatorics filters (Tao / Green–Ruzsa / MathOverflow)
+### 5.8 Two-class, not \(2^e\) (Yu vs job 2a)
 
-- If \(\lvert S+S\rvert\) is tiny, Freiman says \(S\) is a progression: \(\alpha\) will be huge. Discard (compute \(\lvert S+S\rvert\) from the same convolution).
-- 3-AP-free is *stronger* than sum-free and the wrong constraint (Behrend sets are small). Do not import Behrend into \(R(3,t)\).
-- Sidon / Golomb rulers: already job 1D; they are too sparse for \(R(3,t)\).
+Job 2a searched all \(2^{e-1}\) class-union masks. Yu searched subsets of
+**one** union of two classes. Those are incomparable. A 4-class union that
+is \(K_4\)-free is a different (harder) filter. Do not reopen 2a. Optional
+later: 3-class pools at \(e=6\) if 2-class saturates. Not this week.
 
----
+### 5.9 Paley-clique incremental construction (Backelin-style; not for Yu)
 
-## 5. Job C — polarity exact \(\alpha\) (third leverage)
+Literature on Paley cliques (Shearer, Exoo, Backelin) incrementally grows a
+clique in the residue graph. Dual: grow an independent set in the residual
+to **kill** a candidate (the greedy reject of 5.4, but with a Paley-aware
+pivot: start from a known QR configuration). Cheap. Use as a rejector, not
+as a certifier.
 
-Mattheus–Verstraete (Annals 2024) prove \(r(4,t)=\Omega(t^3/\log^4 t)\) by *counting* independent sets in a \(K_4\)-deleted polarity graph. A finite bound needs \(\omega\le 3\) and a hard \(\alpha\le t-1\).
+### 5.10 What the survey of “algorithmic improvement literature” does *not* buy
 
-### 5.1 What to compute
-
-- Raw \(W(3,q)\) collinearity: already `polarity_gq`. Hoffman on it is not \(R(4,t)\).
-- **Delete \(K_4\)s:** either take a unital-derived subgraph \(G_q^\ast\) (paper) or a random induced subgraph that is \(K_4\)-free (their sampling idea). For small \(q\) the whole graph may already have small \(\omega\); check exactly.
-- Orders: \(q=2\) (\(N=15\), toy), \(3\) (\(40\)), \(4\) (\(85\)), \(5\) (\(156\)), \(7\) (\(400\)), \(8\) (\(585\)). Exact \(\alpha\) at \(q=5\) (\(N=156\)) is in MCS range after VT if the graph is vertex-transitive; GQ polarity is not always VT in the same way as Paley — fall back to full MCS / KaMIS reductions / SAT.
-- **Do not** scale to \(q=16\) (\(N=4369\)) expecting exact \(\alpha\). Spectral only.
-
-### 5.2 GPU
-
-Building the polarity graph is GEMM of homogeneous coordinates — already the 1C kernel. Batch many random \(K_4\)-free samples (delete a random vertex subset, then greedily delete vertices of remaining \(K_4\)s). Exact \(\alpha\) per sample is CPU.
-
----
-
-## 6. Technique map (survey → code)
-
-Compressed so the implementation checklist is one page.
-
-### 6.1 \(O(n)\) / \(O(n\log n)\) (already half-wired)
-
-| Trick | Source | Use |
-|---|---|---|
-| Linear sieve | Euler / CP | primes \(p\le 520\) |
-| QR = image of \(x\mapsto x^2\) | PE / CP | Paley seeds |
-| Circulant spectrum = FFT of row | Davis / Diaconis | post-hoc only |
-| \(\lambda_j \pm 2\cos(2\pi jd/n)\) | circulant DFT, rank-1 on the symbol | unused; wire if Hoffman is ever in a loop |
-| FWHT Boolean Cayley | Bernasconi–Codenotti | job 3D, not A–C |
-| Convolution = triangles | CP FFT trick, already `convolution_bool` | incrementalise |
-| VT \(\omega=1+\omega(N(0))\), \(\alpha=1+\alpha(N^c(0))\) | Cayley folklore, Yu 2026 | cert |
-| Distance space \(O(n)\) bits | arXiv:2608.18769 IP | search |
-| \(S=-S\) \(\Rightarrow\) \(2^{e/2}\) class masks | cyclotomy | 2A; Job A uses *subsets* of two classes instead |
-| Batagelj–Zaversnik degeneracy | \(O(n+m)\) | MCS order |
-| Combinadic / revolving-door Gray | Knuth 7.2.1.3 | only \(\lvert P\rvert\le 28\) |
-| Zobrist hash of bitset \(S\) | chess CP | tabu / seen set |
-| Multiplier lex-min | Schur rings / Muzychuk | dedup |
-| Word-RAM popcount / blsr / ctz | TopCoder bitset, BBMC | MCS inner loop |
-| Bucket queue / 64-bit bitset neighbourhood | LeetCode graph + CP | \(K_4\) filter |
-| Meet-in-the-middle | CP knapsack | **skip** at \(\lvert P\rvert=50\) |
-
-### 6.2 Competitive programming / olympiad
-
-| Trick | Where it pays |
+| Paper / trick | Why it is not this week |
 |---|---|
-| Bitset `N(u) AND N(v)` common neighbours | \(K_4\) / triangle incremental |
-| `__builtin_ctzll` iterate bits | MCS candidates, Gray |
-| SoS DP / Fast zeta on \(e\le 12\) class masks | 2A already; not Job A subsets |
-| Rolling hash of \(S\) | isomorphism + tabu |
-| Two-pointers on sorted \(S\) for \(x+y=z\) | Schur check \(O(\lvert S\rvert)\) without FFT |
-| Sparse table / prefix XOR | not needed (\(n\le 400\)) |
-| Dancing links X | exact cover of a pool; worse than the process |
-| Branch and bound with *bitmask DP* on \(n\le 40\) | composite small \(R(3,t)\) exhaustive |
-| Parallel independent first-level recursion | Yu OpenMP; `joblib` / OpenMP in Cython |
-
-IMO/Putnam: the only relevant classical fact is the Schur / sum-free characterisation and the Paley clique bound \(\omega\le\sqrt p\). No olympiad construction beats Yu’s pool.
-
-### 6.3 Algorithmic literature (MCP / MIS / ILS)
-
-| Paper | Take |
-|---|---|
-| Tomita MCS / MCR | pivot + colour bound; we have a 64-bit sketch |
-| San Segundo BBMC / BBMCR / BITRDS | bit-parallel colour + Russian dolls |
-| Östergård Cliquer 2002 | \(c[i]\) suffix; **must have** |
-| Prosser 2012 survey | which solver wins on dense vs sparse |
-| MoMC (Li–Quan, MaxSAT bound) | optional second solver on stubborn residuals |
-| CliSAT | dense 186-vertex: often beats BnB (arXiv:2512.03419) |
-| PMC (Rossi et al.) | k-core kernelization; little help at \(n=186\) dense |
-| IPDPS 2025 work-avoidance GPU MCS | skip; wrong instance class |
-| Exoo tabu 1998 / EJC R29 | partition-flip on circulants; still SOTA metaheuristic |
-| Benlic–Hao BLS | adaptive perturbation after plateau |
-| Nagda–Raghavan–Thakurta AlphaEvolve 2026 | evolved *search code*; Yu then beat their \(R(4,20)\ge 237\). Do not train a GNN. Steal their *initialization families* (algebraic bootstrap + triangle-free growth) for job B. |
-| KaMIS / redumis | MIS reductions before exact \(\alpha\) |
-| Kissat / Cadical | SAT fallback for \(\alpha\ge t\) / \(\alpha<t\) |
-
-### 6.4 ArXiv / 2024–2026 frontier (mapped to jobs)
-
-| Paper | Job | Action |
-|---|---|---|
-| Yu arXiv:2608.18169 \(R(4,20)\ge 252\) | **A** | Reproduce \(S\), then hunt 241/269/… |
-| Coniglio et al. Aug 2026 IP circulants | **B** | Recertify their checker; don’t rerun \(t\le 49\) |
-| Ihringer–Mattheus arXiv:2608.21769 \(TG_{d,h}\) | catalogue | After A–C |
-| Mattheus–Verstraete Annals 2024 | **C** | Exact \(\alpha\) at small \(q\), not the asymptotic |
-| Bradač arXiv:2605.28793 off-diagonal | none | Containers; not enumerable |
-| Li FOCS 2023 extractors | none | \(N\) huge, bound in the analysis |
-| Campos–Jenssen–Michelen–Sahasrabudhe 2025 \(R(3,k)\) \(c\ge 1/3\); Hefty–Horn–King–Pfender 2025 \(c\ge 1/2\) | none | Triangle-free *process on \(K_n\)*, not circulant. Do not implement the process at survey scale. |
-| Kocbek arXiv:2507.09235 geometric CPR | catalogue / C-adjacent | Linear-time \(\alpha\) *approximation* only |
-| Yip et al. 2024 Paley-like polynomials | catalogue | Hoffman vs Paley at same order |
-| Lindsay–Cain arXiv:1510.06102 \(R(4,22)\ge 314\) | **A** | Baseline quartic residue mod 313 |
-| Berghaus–Wagner ICLR 2025 | none | RL loses to random on \(R(4,4)\) |
-
-Erdős #78 is unchanged. Li \((\log N)^C\) is not an A40 MCS target. Polymath/Tao on sum-free sets inform the *seed* for job B, not a new family.
-
-### 6.5 Cursor / Grok stack (what to actually use)
-
-- **Cython or numba** on the MCS inner loop and the \(K_4\) bitset filter. Pure numpy Python `for` in `k4_free_via_neighbourhood` is the present bottleneck.
-- **OpenMP** (Yu) for depth-2 flattening; `joblib` as the portable fallback on RunPod.
-- **CUDA**: one batched bitset-filter kernel, optional. Not required for the first bound.
-- **OR-Tools CP-SAT** (already the Yu lower-bound tool) for \(\alpha\) maximisation on the residual. Optional Kissat via stdin DIMACS.
-- **Independent checker** in a second language (the IP paper’s lesson; AlphaEvolve verification repos). A 50-line bitset MCS in C is enough.
-- **Do not**: PyG, PPO, GAT, full eigendecomposition, `networkx.graph_clique_number`, Gurobi (no license on the pod).
+| CliSAT / SAT encoding of MCS | Residuals are structured circulant; SAT overhead > bitset |
+| MoMC recency-weighted clique | For hard DIMACS; colour bound is the right cut here |
+| GPU MCS (2023–26 surveys) | We have \(\ll 10^4\) residuals, not \(10^8\) |
+| Incremental *exact* MCS (dynamic clique) | \(S\) changes every anneal step; rebuilding 12 KB bitsets is cheaper than dynamic MCS |
+| Lovász \(\vartheta\) / Hoffman in the loop | Proved useless by 2a/3b on this instance class |
+| AlphaEvolve / evolve the search code | Yu beat AlphaEvolve’s \(R(4,20)\ge 237\) with one pool. Evolving Python is not a kernel. |
+| GNN / PPO (Berghaus–Wagner; Run001) | Paley attractor. Already decided. |
+| Coniglio MIP on \(n\le 410\) | Already took \(R(3,24)\)–\(49\). Competing with a solved IP is wasted A40. |
+| Extractors / Bradač | No enumerable adjacency. |
 
 ---
 
-## 7. Implementation order
+## 6. Job 4a (implement first): Yu-style pool search
 
-Ship in this order. Each step is a kernel test + a job that can run on the A40 without the next step.
+**Name:** `4a`. **Owns:** Yu-pool. **Cell:** \(R(4,t)\) for \(t=20\dots 25\).
 
-1. **MCS decision + Russian dolls + bitset colour**, \(n\le 256\). Test: Paley(17), then Yu’s published \(S\) on 251 (\(\alpha=19\) in seconds).
-2. **\(O(n/64)\) incremental \(K_4\) / Schur filters** + stop calling FFT inside ILS.
-3. **Multiplier canonicalisation + Zobrist tabu.**
-4. **Job `4a`:** cyclotomic 2-class pools, restricted process, anneal, shortlist, exact cert. Hardcode Yu’s \(D_r\) and \(S\) as a regression. Then search \(p=241,251,269\).
-5. **Job `4b`:** sum-free ILS with greedy-\(\alpha\) objective, exact residual decision, polycirculant 2-orbit. Recertify Furini certificates. Hunt \(t\ge 50\).
-6. **Job `4c`:** GQ \(q\le 7\) exact \(\alpha\) after \(K_4\)-clean. Only then \(q=8,9\).
-7. Catalogue only after a survey cell moves, or if A–C are exhausted: \(TG_{d,h}\), polynomial Paley-like.
+### 6.1 Regression gate (write this test before the search)
 
-RunPod: one pod, `RAMSEY_JOB=4a`, `nohup` / tmux. MCS is CPU-heavy; an A40 is still useful for batched filters and for not killing the process. A 16-vCPU CPU pod would certify faster per dollar than an A40 if CUDA filters are not yet written — write the CPU path first.
+`data/yu_r4_20.json` holds the published \(S\). A unit test must:
 
-### Success criteria
+1. Build Paley-style cyclotomic classes mod 251, \(e=5\), confirm
+   \(S\subset D_0\cup D_2\).
+2. Confirm \(S=-S\), \(|S|=32\).
+3. Confirm \(G[S]\) is triangle-free (bitset), hence \(\omega(G)=3\).
+4. Run the **new** bitset decision MCS on the 186-vertex residual and
+   report \(\alpha\le 19\). If this takes >5 s or is wrong, **stop** — the
+   cert is not ready for a hunt.
 
-- **Repro:** Yu \(S\) certifies \(\omega=3,\alpha=19\) in this repo.
-- **Move:** any of \(R(4,21)>242\), \(R(4,20)>252\), \(R(4,23)\) / \(R(4,24)\) gap, or \(R(3,t)\) for some \(t\ge 50\) not in the IP paper, with a dumped connection set and a second-implementation checker.
-- **Non-goals:** larger Paley, better Hoffman \(N^{1/k}\), GNN, extractor graphs, Bradač products.
+Until (4) is green, do not burn A40 hours.
 
-### Explicit non-work
+### 6.2 Prime / pool enumerator
 
-- Training PPO / GAT (Berghaus–Wagner).
-- GPU MCS trees for \(n=186\).
-- Enumerating \(2^{50}\) pool subsets.
-- Hoffman inside the inner loop.
-- Cyclotomic *class unions* beyond 2A (already running; 3A may perturb winners, it will not beat a pool subset).
-- ANF \(n=16\) as a bound (spectral underestimation).
+```
+for p in primes(200, 400):
+    for e in {4, 5, 8, 10}:
+        if (p-1) % e: continue
+        g = primitive_root(p)
+        if pow(g, (p-1)//2, p) == p-1 and (p-1)//e even-or-minus-one-in-subgroup:
+            # -1 in <g^e>  ⇔  e | (p-1)/2
+            if (p-1)//2 % e: continue
+            classes = cyclotomic_classes(p, e, g)
+            for (i,j) in pairs with i < j:
+                pool = classes[i] ∪ classes[j]
+                yield Job(p, e, pool)
+```
+
+Quartic (\(e=4\)) when \(p\equiv 1\pmod 8\); quintic (\(e=5\)) when
+\(p\equiv 1\pmod 10\). Also allow \(e=8,10\) as *coarser* pools (smaller
+classes, still 2-class unions). Skip primes where the pool is the full
+quadratic residues — that is Paley, already catalogued.
+
+### 6.3 Search budget (A40, one night)
+
+Per \((p,e,\mathrm{pool})\):
+
+- 2 048 independent restricted processes (different RNG seeds).
+- 4 096 anneal swaps per saturated \(S\), triangle-filter + greedy-\(\alpha\) reject.
+- Lex-min, unique, keep the 32 smallest greedy-\(\alpha\) (best chance of
+  \(\alpha < t\)).
+- Decision MCS with \(t\) from the current survey lower bound for
+  \(R(4,\cdot)\) at this \(n=p\).
+
+Targets, in order:
+
+| Priority | Goal | Why |
+|---|---|---|
+| 0 | Recertify Yu \(S\) | Gate |
+| 1 | Any \(S\subset\) pool on \(p=251\) with \(\alpha\le 18\) | Beat 252, or a second witness |
+| 2 | \(p=241,269,271,281,311,313,331,349,353,359,373,379,389,397\) | Neighbours; 313 already has quartic \(R(4,22)\ge 314\) — do not waste time matching that cell, try \(R(4,21)\) and \(R(4,23)\) |
+| 3 | \(R(4,21)\) on some \(p\sim 260\)–\(310\) | Survey still weak vs the 314 next to it |
+| 4 | \(R(4,23)\)–\(R(4,25)\) | Diminishing; only if 1–3 are dry |
+
+Checkpoint every prime to `registry.jsonl`. Restart = last prime, not p=13.
+
+### 6.4 Acceptance
+
+A ledger row is a **cell** only if:
+
+- `omega_exact == 3` (triangle-free \(N(0)\), bitset),
+- `alpha_exact <= t-1` (decision MCS, full residual, not a 64-subset),
+- `n == p`, `family == yu_pool`,
+- `S` stored as a sorted list, plus `p, e, pool_id, seed`.
+
+Hoffman may be attached as metadata. It must not gate acceptance.
+
+---
+
+## 7. Job 4b: distance-space \(R(3,t)\) for \(t\ge 50\)
+
+Coniglio–Lancia–Lodi–Sanità (Optimization Online, 19 Aug 2026) already
+moved 25 cells of \(R(3,n)\) for \(n\le 49\) by IP in the projected
+distance space, \(N\le 410\). **Do not rerun \(t\le 49\).** That is
+competing with a solved MIP on CPU.
+
+What they did not hand us:
+
+- Circulants for \(R(3,t)\) at \(t\ge 50\) (\(n\) will exceed 410; IP dies).
+- Polycirculants / two-block (our 3a shape) at those \(t\).
+- A GPU process that is not IP.
+
+Algorithm (retarget 2c):
+
+- State: bitstring of length \((n-1)/2\), \(n\) odd, \(S=-S\).
+- Filter: incremental Schur — \(S\) sum-free \(\Leftrightarrow\) triangle-free
+  circulant. \(O(1)\) / \(O(|S|)\) per flip via the difference table.
+- Reject: greedy \(\alpha\) on \(N^c(0)\) \(\ge t\).
+- Cert: decision MCS \(\alpha\le t-1\) on residual of size \((n-1)/2-|S|\).
+  At \(n=500\), residual can be ~200–300. Same solver as 4a.
+- Score: **not** Hoffman. Use \(|S|\) (larger clique-cover of the complement
+  side) and greedy \(\alpha\).
+
+Stop a run if the residual exceeds ~280 before the MCS is proven <10 s on
+the Yu residual. Otherwise you reinvent 3d’s hang.
+
+---
+
+## 8. Job 4c: polarity graphs, \(K_4\)-clean, exact \(\alpha\)
+
+Mattheus–Verstraete is an **asymptotic** independent-set count. A finite
+cell needs \(\omega\le 3\) and \(\alpha\le t-1\) on a concrete graph.
+
+v1 said \(q=7,8,9,11\). v2 tightens:
+
+| \(q\) | Raw polarity \(n\) | After deleting vertices of \(K_4\)s | Exact \(\alpha\)? |
+|---|---|---|---|
+| 5 | tiny | toy | yes, already uninteresting |
+| 7 | hundreds | possibly MCS | **do this** |
+| 8, 9 | larger | maybe | only if \(q=7\) cert is <1 min |
+| 11, 13 | job 3c already Hoffman-\(k>123,171\) | residual too big | **do not** run exact MCS |
+
+Algorithm:
+
+1. Build the polarity graph (already in `constructions.py`).
+2. Enumerate \(K_4\)s — on a polarity graph this is geometric (totally
+   isotropic 2-spaces), not \(O(n^4)\). Delete a hitting set of vertices
+   (greedy set cover on the \(K_4\) list) to kill all \(K_4\)s.
+3. The leftover \(H\) has \(\omega\le 3\). Compute **decision** \(\alpha(H)<t\)
+   with the same bitset solver. \(H\) is **not** vertex-transitive — no VT
+   residual. If \(|V(H)|>256\), this job stops.
+
+Hoffman on the raw graph (1c/3c) underestimates \(H\). That statement from
+v1 is still true. The honest counterpart of Mattheus–Verstraete is this
+deletion + exact \(\alpha\), not a new theorem.
+
+---
+
+## 9. Catalogue only (one CLI flag, no hunt)
+
+- **Ihringer–Mattheus \(TG_{d,h}\)** (arXiv:2608.05712): Singer-circulant,
+  \(n=(2^{hd}-1)/(2^h-1)\), adjacency \(\mathrm{Tr}(ax/y)=0\). Emit
+  \(d=4,5\), \(h\le 8\), FFT spectrum, compare to Paley at the same \(n\).
+  Will not beat Paley(17) on \(C^*\). Fills the algebraic gap.
+- **Yip et al. polynomial Paley-like (2024):** low-degree \(f\in\mathbb F_q[x]\),
+  not Cayley. Build, Hoffman-compare to Paley, stop. Expected: Paley wins.
+
+Neither gets an A40 night.
+
+---
+
+## 10. Implementation order (this is the job list)
+
+Write code in this order. Each step has a test that must pass before the
+next burns GPU time.
+
+| Step | Deliverable | Test |
+|---|---|---|
+| 0 | Bitset graph + Östergård/Tomita, \(n\le 256\), **decision** mode | Random graphs \(n=40\) match NetworkX; \(n=64\) match current MCS |
+| 1 | Residual-from-row: bitsets of \(G[N^c(0)]\) in \(O(p\cdot r/64)\) | Paley(17): \(\alpha=3\); Paley(29): known \(\alpha\) |
+| 2 | Yu \(S\) regression | \(\omega=3\), \(\alpha=19\) on 186 vertices, <5 s |
+| 3 | Incremental triangle on a pool bitset | Adding Yu’s last point stays legal; a Schur triple is rejected |
+| 4 | Restricted process + anneal + lex-min + greedy-\(\alpha\) reject | Recovers a 32-subset of \(D_0\cup D_2\) mod 251 that is triangle-free (not necessarily Yu’s) |
+| 5 | Job `4a` CLI: primes 200–400, checkpoint jsonl | Dry-run \(p=251\) only, 64 seeds, <2 min |
+| 6 | A40 night: full 4a | Ledger cells or a written negative (pools saturated, \(\alpha\) too big) |
+| 7 | Job `4b` only if 4a is dry or as a second night | \(t\ge 50\) |
+| 8 | Job `4c` \(q=7\) | Exact \(\alpha\) or “residual >256” |
+
+Do not start step 6 until step 2 is green. That is the whole lesson of 3d.
+
+---
+
+## 11. What not to spend A40 hours on (v2, evidence-based)
+
+| Item | Why, now with A40 data |
+|---|---|
+| More Paley / full cyclotomic class unions \(p>10^4\) | 2a already did \(\le 9973\) Hoffman. Spectral \(k\) inflates. Exact Paley \(\omega\) is Exoo’s job, not ours. |
+| Recertifying 2a’s 9288 rows with MCS | Wrong space (whole classes). Almost all have \(\omega\ge 4\) or huge \(\alpha\). |
+| Job 3d \(n=16\) | Induced \(32768\times 32768\) + Python colouring. Spectral trap. Ctrl-C after n=13/14. |
+| Job 3b-style Hoffman ILS | 59 graphs, 12 s, zero cells. The score is blind. |
+| Li / Cohen / BRSW extractors | Clique bound is in the analysis. GPU MCS at feasible \(N\) cannot certify \((\log N)^C\). |
+| Bradač product | Containers; no adjacency to enumerate. |
+| PPO / GNN / AlphaEvolve-on-the-pod | Paley attractor; Yu already beat AlphaEvolve on \(R(4,20)\). |
+| Coniglio range \(R(3,24)\)–\(49\) | IP paper owns these cells. |
+| GQ \(q=11,13\) exact MCS | 3c Hoffman already; residual not in bitset range. |
+| Training a ranker on 2a masks | `mask_ranker.json` predicts Hoffman. Hoffman is not the objective. |
+
+---
+
+## 12. Bottom line
+
+#78 is unchanged: no GPU family here is an infinite \(C\ge 1.01\).
+
+The 2026 papers that move **finite** bounds are:
+
+1. Restricted cyclotomic **subsets** + exact residual MCS (Yu).
+2. Circulant distance-space search (Coniglio IP; our piece is the
+   \(t\ge 50\) process they did not run).
+3. Exact \(\alpha\) on a \(K_4\)-cleaned polarity graph (computational
+   counterpart of Mattheus–Verstraete, not a new theorem).
+
+Everything else is catalogue or a different Erdős problem.
+
+The highest-leverage **new** job is still Yu-style — but the first A40
+wave already ran the *wrong* Yu-adjacent jobs (2a, 3b). The next wave is
+not “more primes”. It is:
+
+**bitset decision MCS on residuals built from the circulant row, gated on
+a reproduction of Yu’s \(S\), then a restricted process on 2-class pools
+for \(p\in[200,400]\).**
+
+Until that certificate exists, an A40 hour spent on another construction
+family is a catalogue hour, not a cell hour.
