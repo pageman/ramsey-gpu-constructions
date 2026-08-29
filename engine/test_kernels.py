@@ -15,6 +15,9 @@ from engine.constructions import paley_prime, polarity_gq, frankl_wilson
 from engine.kernels.cayley import k4_free_via_neighbourhood, triangle_free_circulant
 from engine.kernels.mcs import omega_vertex_transitive
 from engine.kernels.rowcert import certify_boolean_cayley, certify_circulant_row, paley_closed_eigs
+from engine.kernels.residual import distances_to_row, nbhd_triangle_free, residual_nbr
+from engine.kernels.bitset_mcs import greedy_mis, mis_decision
+from engine.yu_pool import load_yu_witness, undirected_classes
 from engine.kernels.sieve import quadratic_residue_row
 from engine.kernels.spectrum import fft_eigenvalues, fwht, spectral_bounds_from_eigs
 
@@ -79,6 +82,32 @@ def test_gq2_order() -> None:
     _assert(deg == 6, f"GQ(2,2) collinearity degree 6, got {deg}")
 
 
+def test_yu_s_is_k4_free_186_residual() -> None:
+    w = load_yu_witness()
+    p, e, g, S = int(w["p"]), int(w["e"]), int(w["primitive_root"]), w["S"]
+    classes = undirected_classes(p, e, g)
+    pool = set(classes[0]) | set(classes[2])
+    _assert(len(S) == 32 and set(S) <= pool, (len(S), set(S) - pool))
+    row = distances_to_row(p, S)
+    _assert(int(row.sum()) == 64, int(row.sum()))
+    _assert(nbhd_triangle_free(row), "Yu N(0) must be triangle-free")
+    nbr = residual_nbr(row)
+    _assert(len(nbr) == 186, len(nbr))
+    gα = 1 + greedy_mis(nbr)
+    _assert(gα <= 19, f"greedy α={gα} already kills Yu")
+
+
+def test_paley17_residual_mis() -> None:
+    adj, _ = paley_prime(17)
+    row = adj[0]
+    nbr = residual_nbr(row)
+    # α=3 ⇒ residual α=2: no 3-IS, there is a 2-IS
+    no3 = mis_decision(nbr, target=3, time_limit=1.0)
+    yes2 = mis_decision(nbr, target=2, time_limit=1.0)
+    _assert(not no3["found"] and no3["exact"] and not no3["timed_out"], no3)
+    _assert(yes2["found"], yes2)
+
+
 def test_boolean_residual_limit_skips_mcs() -> None:
     """n=13 ANF residual is ~4k vertices; residual_limit=64 must not colour it."""
     from engine.constructions import anf_quadratic_f2
@@ -107,6 +136,8 @@ def main() -> int:
         test_fwht_hadamard,
         test_c5_triangle_free,
         test_gq2_order,
+        test_yu_s_is_k4_free_186_residual,
+        test_paley17_residual_mis,
         test_boolean_residual_limit_skips_mcs,
         test_fw_small,
     ]

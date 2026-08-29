@@ -49,6 +49,7 @@ venv/
 # generated binaries
 data/adj/
 *.npy
+engine/kernels/native_mis.so
 
 # cloud noise
 agent-tools/

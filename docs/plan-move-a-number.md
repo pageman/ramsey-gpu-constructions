@@ -83,12 +83,12 @@ Hoffman”. It is a three-stage pipeline on one prime.
 \(-1\in\langle g^e\rangle\) so the Cayley graph is undirected.
 Connection set \(S\subset P\), \(|S|=32\), \(S=-S\).
 
-Published witness (the regression test; if this fails, the cert is wrong):
+Published witness (undirected **distances**, Table 4 of Yu; 32-subset of \(D_0\cup D_2\), degree 64, residual 186):
 
 ```
-S = {2, 4, 8, 10, 16, 21, 32, 37, 39, 42, 45, 63, 64, 73, 74, 78,
-     84, 90, 91, 105, 126, 128, 146, 147, 148, 156, 168, 180,
-     189, 210, 233, 243}
+S = {1, 2, 4, 9, 10, 13, 18, 25, 26, 33, 36, 37, 43, 45, 50, 52,
+     65, 66, 71, 72, 74, 79, 86, 90, 93, 100, 103, 104, 107, 109,
+     119, 121}
 ```
 
 \(\omega(G)=3\), \(\alpha(G)=19\), hence \(R(4,20)\ge 252\).

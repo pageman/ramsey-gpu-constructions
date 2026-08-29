@@ -24,6 +24,9 @@ OWNERS = {
     "3b": {"cells": ("R(4,k)",), "families": ("circulant_r4",)},
     "3c": {"cells": ("R(4,t)-geom",), "families": ("polarity_gq",)},
     "3d": {"cells": ("explicit-diag",), "families": ("quadratic_form_f2", "gold_trace_f2")},
+    "4a": {"cells": ("R(4,t)",), "families": ("yu_pool",)},
+    "4b": {"cells": ("R(3,k)",), "families": ("circulant_r3",)},
+    "4c": {"cells": ("R(4,t)-geom",), "families": ("polarity_gq",)},
 }
 
 
@@ -46,9 +49,24 @@ def load_records(path: Path = REG_PATH) -> list[dict]:
 
 
 def write_ledger(claims: Iterable[dict], path: Path = LEDGER_PATH) -> None:
+    """Merge by graph_id so 3d and 4a/4b/4c can finish in either order."""
     path.parent.mkdir(parents=True, exist_ok=True)
+    existing: list[dict] = []
+    if path.exists():
+        try:
+            existing = list((json.loads(path.read_text()) or {}).get("claims") or [])
+        except json.JSONDecodeError:
+            existing = []
+    by_id = {c.get("graph_id"): c for c in existing if c.get("graph_id")}
+    orphan = [c for c in existing if not c.get("graph_id")]
+    for c in claims:
+        gid = c.get("graph_id")
+        if gid:
+            by_id[gid] = c
+        else:
+            orphan.append(c)
     payload = {
         "updated": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-        "claims": list(claims),
+        "claims": orphan + list(by_id.values()),
     }
     path.write_text(json.dumps(payload, indent=2, default=str))

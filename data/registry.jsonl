@@ -194,3 +194,8 @@
 {"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p181_e6_mask36", "N": 181, "k_certified": 15, "exact": false, "ts": "2026-08-27T19:01:02Z"}
 {"job": "2b", "cell": "cert", "graph_id": "polarity_gq_q2", "N": 15, "k_certified": 6, "exact": true, "n_1_over_k": 1.5704178024750197, "kernel": "generic", "ts": "2026-08-27T19:01:02Z"}
 {"job": "2b", "cell": "cert", "graph_id": "polarity_gq_q3", "N": 40, "k_certified": 11, "exact": false, "n_1_over_k": 1.3984334944969823, "kernel": "generic", "ts": "2026-08-27T19:01:02Z"}
+{"job": "4c", "cell": "R(4,t)-geom", "graph_id": "polarity_gq_q3_n25_kindk4clean", "N": 25, "k_certified": 8, "exact": true, "omega": 3, "alpha": 7, "ts": "2026-08-29T18:59:57Z"}
+{"job": "4c", "cell": "R(4,t)-geom", "graph_id": "polarity_gq_q5_n50_kindk4clean", "N": 50, "k_certified": 14, "exact": true, "omega": 3, "alpha": 13, "ts": "2026-08-29T18:59:57Z"}
+{"job": "4b", "cell": "R(3,k)", "graph_id": "circulant_r3_t12_n51", "N": 51, "k_certified": 14, "exact": false, "omega": null, "alpha": null, "ts": "2026-08-29T19:00:13Z"}
+{"job": "4a", "cell": "R(4,t)", "graph_id": "yu_pool_p251_e5_kindyu_published", "N": 251, "k_certified": 20, "exact": true, "omega": 3, "alpha": 19, "ts": "2026-08-29T19:00:42Z"}
+{"job": "4a", "checkpoint": true, "p": 251, "ts": "2026-08-29T19:00:42Z"}

@@ -441,6 +441,9 @@ const PLAN_JOBS = [
   { id: "3b", owns: "Circulant search", cell: "R(4,k), k=5..20" },
   { id: "3c", owns: "GQ scale-up", cell: "large-t R(4,t)" },
   { id: "3d", owns: "F₂ ANF search n=13..16", cell: "explicit-diag" },
+  { id: "4a", owns: "Yu 2-class pool + bitset residual MIS", cell: "R(4,t)" },
+  { id: "4b", owns: "Circulant R(3,t) t≥50, incremental Schur", cell: "R(3,k)" },
+  { id: "4c", owns: "GQ K₄-clean exact α, q=7 first", cell: "R(4,t)-geom" },
 ];
 
 const DEFAULT_ALGORITHMS = [

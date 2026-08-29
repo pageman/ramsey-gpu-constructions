@@ -1,5 +1,5 @@
 {
-  "updated": "2026-08-27T19:01:02Z",
+  "updated": "2026-08-29T19:03:01Z",
   "claims": [
     {
       "graph_id": "polarity_gq_q2",
@@ -14,6 +14,27 @@
       "k": 11,
       "statement": "spectral k=11 (not a theorem)",
       "exact": false
+    },
+    {
+      "graph_id": "polarity_gq_q3_n25_kindk4clean",
+      "N": 25,
+      "k": 8,
+      "statement": "R(8,8) > 25",
+      "exact": true
+    },
+    {
+      "graph_id": "polarity_gq_q5_n50_kindk4clean",
+      "N": 50,
+      "k": 14,
+      "statement": "R(14,14) > 50",
+      "exact": true
+    },
+    {
+      "graph_id": "yu_pool_p251_e5_kindyu_published",
+      "N": 251,
+      "k": 20,
+      "statement": "R(20,20) > 251",
+      "exact": true
     }
   ]
 }

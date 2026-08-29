@@ -1,7 +1,7 @@
 {
   "device": "numpy-openblas",
-  "n_graphs": 263,
-  "generated_at": "2026-08-27T19:01:02Z",
+  "n_graphs": 267,
+  "generated_at": "2026-08-29T19:03:01Z",
   "run001_done": [
     "Paley of primes p \u2261 1 (mod 4), p \u2208 [17, 997]",
     "Frankl\u2013Wilson hybrids (q, d) with edge unions against Paley",
@@ -211,7 +211,7 @@
       "intercept": 1.548861802943862,
       "points": 31,
       "construction": "circulant_r3",
-      "mean_n_1_over_k": 1.4778513510596774
+      "mean_n_1_over_k": 1.4730512437277792
     },
     {
       "C": 1.156566618207354,
@@ -286,12 +286,12 @@
       "mean_n_1_over_k": 1.6004935421598894
     },
     {
-      "C": 1.071137290615622,
-      "slope": 0.06872097243366769,
-      "intercept": 2.727439457093807,
-      "points": 4,
+      "C": 1.0707332630930977,
+      "slope": 0.06834370637842746,
+      "intercept": 2.7621558989323325,
+      "points": 6,
       "construction": "polarity_gq",
-      "mean_n_1_over_k": 1.3247939003921412
+      "mean_n_1_over_k": 1.3528167516524656
     },
     {
       "C": 1.0948259055230944,
@@ -326,12 +326,18 @@
       "mean_n_1_over_k": 1.7492623920102144
     },
     {
-      "C": 1.0041072542875706,
-      "slope": 0.0040988425435940475,
-      "intercept": 3.9850425406622367,
-      "points": 263,
+      "C": null,
+      "slope": null,
+      "points": 1,
+      "construction": "yu_pool"
+    },
+    {
+      "C": 1.0041190251112062,
+      "slope": 0.004110565150509862,
+      "intercept": 3.9868523916528322,
+      "points": 266,
       "construction": "all",
-      "mean_n_1_over_k": 1.5962107411708197
+      "mean_n_1_over_k": 1.5927475841682917
     }
   ],
   "oeis_a000791": [
@@ -2194,6 +2200,54 @@
       "kernel": "fft",
       "symmetry": "circulant",
       "params": "{\"n\": 47, \"S\": [4, 5, 6, 7, 22, 25, 40, 41, 42, 43], \"score\": 17.950376562517256}",
+      "scale": "local"
+    },
+    {
+      "graph_id": "circulant_r3_t12_n51",
+      "construction_type": "circulant_r3",
+      "N": 51,
+      "k_target": 14,
+      "provenance_seed": 12,
+      "degree_mean": 8.0,
+      "degree_std": 0.0,
+      "degree_min": 8.0,
+      "degree_max": 8.0,
+      "degree_kurtosis": 0.0,
+      "centrality_mean": 0.0,
+      "edge_algebraic_label_mean": 0.0,
+      "omega_exact": null,
+      "alpha_exact": null,
+      "omega_lower": 2,
+      "omega_upper": 51,
+      "alpha_lower": 13,
+      "alpha_upper": 13,
+      "theta_approx": 0.0,
+      "spectral_gap": 0.0,
+      "is_k_free": false,
+      "triangles": 0,
+      "k4": 0,
+      "n_1_over_k": 1.3242479164389231,
+      "exact": false,
+      "gpu_kernel": "incremental Schur + residual MIS",
+      "run001": "not_done",
+      "field": "Z/51Z",
+      "device": "numpy-openblas",
+      "adj_matrix_path": "data/adj/circulant_r3_t12_n51.npy",
+      "algebraic_residue_vec_0": 0,
+      "algebraic_residue_vec_1": 0,
+      "algebraic_residue_vec_2": 0,
+      "algebraic_residue_vec_3": 0,
+      "algebraic_residue_vec_4": 0,
+      "algebraic_residue_vec_5": 0,
+      "algebraic_residue_vec_6": 0,
+      "algebraic_residue_vec_7": 0,
+      "algebraic_residue_vec_8": 0,
+      "algebraic_residue_vec_9": 0,
+      "job": "4b",
+      "cell": "R(3,k)",
+      "kernel": "bitset-mis",
+      "symmetry": "circulant",
+      "params": "{\"n\": 51, \"t\": 12, \"S\": [13, 18, 22, 24, 27, 29, 33, 38]}",
       "scale": "local"
     },
     {
@@ -11445,6 +11499,54 @@
       "scale": "local"
     },
     {
+      "graph_id": "polarity_gq_q3_n25_kindk4clean",
+      "construction_type": "polarity_gq",
+      "N": 25,
+      "k_target": 8,
+      "provenance_seed": 3,
+      "degree_mean": 2.0,
+      "degree_std": 0.0,
+      "degree_min": 2.0,
+      "degree_max": 2.0,
+      "degree_kurtosis": 0.0,
+      "centrality_mean": 0.0,
+      "edge_algebraic_label_mean": 0.0,
+      "omega_exact": 3,
+      "alpha_exact": 7,
+      "omega_lower": 3,
+      "omega_upper": 3,
+      "alpha_lower": 7,
+      "alpha_upper": 7,
+      "theta_approx": 0.0,
+      "spectral_gap": 0.0,
+      "is_k_free": true,
+      "triangles": 0,
+      "k4": 0,
+      "n_1_over_k": 1.4953487812212205,
+      "exact": true,
+      "gpu_kernel": "K4-clean + residual MIS",
+      "run001": "not_done",
+      "field": "W(3,3) leftover",
+      "device": "numpy-openblas",
+      "adj_matrix_path": "data/adj/polarity_gq_q3_n25_kindk4clean.npy",
+      "algebraic_residue_vec_0": 0,
+      "algebraic_residue_vec_1": 0,
+      "algebraic_residue_vec_2": 0,
+      "algebraic_residue_vec_3": 0,
+      "algebraic_residue_vec_4": 0,
+      "algebraic_residue_vec_5": 0,
+      "algebraic_residue_vec_6": 0,
+      "algebraic_residue_vec_7": 0,
+      "algebraic_residue_vec_8": 0,
+      "algebraic_residue_vec_9": 0,
+      "job": "4c",
+      "cell": "R(4,t)-geom",
+      "kernel": "bitset-mis",
+      "symmetry": "circulant",
+      "params": "{\"q\": 3, \"n\": 25, \"kind\": \"k4clean\"}",
+      "scale": "local"
+    },
+    {
       "graph_id": "polarity_gq_q3",
       "construction_type": "polarity_gq",
       "N": 40,
@@ -11490,6 +11592,54 @@
       "kernel": "generic",
       "symmetry": "none",
       "params": "{\"q\": 3, \"N\": 40}",
+      "scale": "local"
+    },
+    {
+      "graph_id": "polarity_gq_q5_n50_kindk4clean",
+      "construction_type": "polarity_gq",
+      "N": 50,
+      "k_target": 14,
+      "provenance_seed": 5,
+      "degree_mean": 2.0,
+      "degree_std": 0.0,
+      "degree_min": 2.0,
+      "degree_max": 2.0,
+      "degree_kurtosis": 0.0,
+      "centrality_mean": 0.0,
+      "edge_algebraic_label_mean": 0.0,
+      "omega_exact": 3,
+      "alpha_exact": 13,
+      "omega_lower": 3,
+      "omega_upper": 3,
+      "alpha_lower": 12,
+      "alpha_upper": 13,
+      "theta_approx": 0.0,
+      "spectral_gap": 0.0,
+      "is_k_free": true,
+      "triangles": 0,
+      "k4": 0,
+      "n_1_over_k": 1.3223761271250098,
+      "exact": true,
+      "gpu_kernel": "K4-clean + residual MIS",
+      "run001": "not_done",
+      "field": "W(3,5) leftover",
+      "device": "numpy-openblas",
+      "adj_matrix_path": "data/adj/polarity_gq_q5_n50_kindk4clean.npy",
+      "algebraic_residue_vec_0": 0,
+      "algebraic_residue_vec_1": 0,
+      "algebraic_residue_vec_2": 0,
+      "algebraic_residue_vec_3": 0,
+      "algebraic_residue_vec_4": 0,
+      "algebraic_residue_vec_5": 0,
+      "algebraic_residue_vec_6": 0,
+      "algebraic_residue_vec_7": 0,
+      "algebraic_residue_vec_8": 0,
+      "algebraic_residue_vec_9": 0,
+      "job": "4c",
+      "cell": "R(4,t)-geom",
+      "kernel": "bitset-mis",
+      "symmetry": "circulant",
+      "params": "{\"q\": 5, \"n\": 50, \"kind\": \"k4clean\"}",
       "scale": "local"
     },
     {
@@ -12907,6 +13057,54 @@
       "algebraic_residue_vec_9": 0,
       "runtime_sec": 0.0065,
       "params": "{\"seed\": \"paley_prime_17\", \"n_seed\": 17, \"N\": 289}"
+    },
+    {
+      "graph_id": "yu_pool_p251_e5_kindyu_published",
+      "construction_type": "yu_pool",
+      "N": 251,
+      "k_target": 20,
+      "provenance_seed": 251,
+      "degree_mean": 64.0,
+      "degree_std": 0.0,
+      "degree_min": 64.0,
+      "degree_max": 64.0,
+      "degree_kurtosis": 0.0,
+      "centrality_mean": 0.0,
+      "edge_algebraic_label_mean": 0.0,
+      "omega_exact": 3,
+      "alpha_exact": 19,
+      "omega_lower": 3,
+      "omega_upper": 3,
+      "alpha_lower": 19,
+      "alpha_upper": 19,
+      "theta_approx": 0.0,
+      "spectral_gap": 0.0,
+      "is_k_free": true,
+      "triangles": 0,
+      "k4": 0,
+      "n_1_over_k": 1.3182072202231385,
+      "exact": true,
+      "gpu_kernel": "restricted process + bitset residual MIS",
+      "run001": "not_done",
+      "field": "Z/251Z",
+      "device": "numpy-openblas",
+      "adj_matrix_path": "data/adj/yu_pool_p251_e5_kindyu_published.npy",
+      "algebraic_residue_vec_0": 0,
+      "algebraic_residue_vec_1": 0,
+      "algebraic_residue_vec_2": 0,
+      "algebraic_residue_vec_3": 0,
+      "algebraic_residue_vec_4": 0,
+      "algebraic_residue_vec_5": 0,
+      "algebraic_residue_vec_6": 0,
+      "algebraic_residue_vec_7": 0,
+      "algebraic_residue_vec_8": 0,
+      "algebraic_residue_vec_9": 0,
+      "job": "4a",
+      "cell": "R(4,t)",
+      "kernel": "bitset-mis",
+      "symmetry": "circulant",
+      "params": "{\"p\": 251, \"e\": 5, \"kind\": \"yu_published\", \"S\": [1, 2, 4, 9, 10, 13, 18, 25, 26, 33, 36, 37, 43, 45, 50, 52, 65, 66, 71, 72, 74, 79, 86, 90, 93, 100, 103, 104, 107, 109, 119, 121], \"literature_alpha\": 19}",
+      "scale": "local"
     }
   ],
   "best_by_type": [
@@ -13053,6 +13251,15 @@
       "n_1_over_k": 1.9036539387158786,
       "run001": "not_done",
       "gpu_kernel": "kronecker(A+I, A+I)"
+    },
+    {
+      "construction_type": "yu_pool",
+      "graph_id": "yu_pool_p251_e5_kindyu_published",
+      "N": 251,
+      "k_target": 20,
+      "n_1_over_k": 1.3182072202231385,
+      "run001": "not_done",
+      "gpu_kernel": "restricted process + bitset residual MIS"
     }
   ],
   "heatmaps": {
@@ -14633,6 +14840,45 @@
           "gold_trace_f2",
           "polarity_gq",
           "frankl_wilson"
+        ]
+      }
+    },
+    "4c": {
+      "n_graphs": 2,
+      "scale": "local",
+      "seconds": 0.022,
+      "owners": {
+        "cells": [
+          "R(4,t)-geom"
+        ],
+        "families": [
+          "polarity_gq"
+        ]
+      }
+    },
+    "4b": {
+      "n_graphs": 1,
+      "scale": "local",
+      "seconds": 0.018,
+      "owners": {
+        "cells": [
+          "R(3,k)"
+        ],
+        "families": [
+          "circulant_r3"
+        ]
+      }
+    },
+    "4a": {
+      "n_graphs": 1,
+      "scale": "local",
+      "seconds": 159.394,
+      "owners": {
+        "cells": [
+          "R(4,t)"
+        ],
+        "families": [
+          "yu_pool"
         ]
       }
     }

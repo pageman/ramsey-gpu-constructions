@@ -85,8 +85,31 @@ Environment (see `runpod.env.example`):
 | | `3b` | circulant | \(R(4,k)\), \(k=5..20\) |
 | | `3c` | GQ scale-up | large-\(t\) \(R(4,t)\) |
 | | `3d` | ANF search | \(n=13..16\), FWHT only if residual \(>64\) (prints every trial) |
+| then | `4a` | Yu 2-class pool + bitset residual MIS | \(R(4,t)\) |
+| | `4b` | Circulant \(R(3,t)\) for \(t\ge 50\) | \(R(3,k)\) |
+| | `4c` | GQ \(K_4\)-clean exact \(\alpha\) | \(R(4,t)\)-geom |
 
 Also set `RAMSEY_SCALE=runpod`. Base image pin: `runpod/pytorch:1.0.3-cu1281-torch280-ubuntu2404`.
+
+### Run 4a/4b/4c without stopping 3d
+
+Job 3d is **one CPU thread**. 4a–4c use other cores (and compile `engine/kernels/native_mis.c` on first MIS). They **append** `data/registry.jsonl` and **merge** `catalog.json` / `bound_ledger.json` by `graph_id`, so 3d finishing later will not wipe them (and they will not wipe 3d if 3d writes last — both upsert).
+
+On the pod, in a **new** SSH (not the 3d pane, not the stuck `ramsey` 2a paste):
+
+```bash
+# do not attach to the 3d pts/1 session
+cd /workspace/ramsey-gpu-constructions
+# get this commit onto the pod (Origin or scp engine/ + data/yu_r4_20.json)
+gcc -O3 -shared -fPIC -o engine/kernels/native_mis.so engine/kernels/native_mis.c
+tmux new -s ramsey4
+cd /workspace/ramsey-gpu-constructions
+PYTHONUNBUFFERED=1 python3 -u -m engine.cli --job 4a --scale runpod
+# later, another window:  --job 4b   then  --job 4c
+# detach: Ctrl-B, D
+```
+
+You should see `[4a] Yu S regression…` within a second. 3d stays on PID 18717 until its colourings finish.
 
 ## Run the dashboard
 
