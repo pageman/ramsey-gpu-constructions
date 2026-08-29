@@ -53,3 +53,6 @@ engine/kernels/native_mis.so
 
 # cloud noise
 agent-tools/
+
+# Mac / agent export (regenerate with scripts/sync-to-downloads.sh)
+/Downloads/

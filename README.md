@@ -124,6 +124,25 @@ For each graph we report a **certified** \(k=\max(\omega^\uparrow,\alpha^\uparro
 
 OEIS A000791: \(R(3,3)=6\), \(R(4,4)=18\), \(R(5,5)\in[43,48]\). Yu 2026: \(R(4,20)\ge 252\) via a 251-vertex quintic-cyclotomic circulant (the 3B target order).
 
+## Copy to `Downloads/Ramsey-GPU-Constructions`
+
+On the Mac, from the repo:
+
+```bash
+chmod +x scripts/sync-to-downloads.sh
+./scripts/sync-to-downloads.sh
+```
+
+That writes `~/Downloads/Ramsey-GPU-Constructions/` (code, docs, local `data/`). To add the A40 files from the pod (confirm IP/port in the RunPod UI first):
+
+```bash
+export RAMSEY_POD_HOST=69.30.85.91
+export RAMSEY_POD_PORT=22061
+./scripts/sync-to-downloads.sh
+```
+
+Pod data lands in `~/Downloads/Ramsey-GPU-Constructions/a40-from-pod/` (`catalog.json` ~15 MB, `registry.jsonl` with job 2a + 3d n=13/14).
+
 ## Layout
 
 - `engine/constructions.py` — parametric families (Paley, GP, cyclotomic, \(\mathbb F_2\), GQ, FW, …)
