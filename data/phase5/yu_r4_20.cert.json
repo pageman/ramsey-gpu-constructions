@@ -1,0 +1,26 @@
+{
+  "citation": "Yu, arXiv:2608.18169",
+  "p": 251,
+  "residual_n": 186,
+  "structural_ok": true,
+  "alpha_certified": true,
+  "decide": {
+    "found": false,
+    "lower": 15,
+    "exact": true,
+    "nodes": 216275634,
+    "seconds": 63.17127564921975,
+    "timed_out": false,
+    "backend": "c-decide",
+    "n": 186
+  },
+  "cpsat_lb18": {
+    "available": false,
+    "found": false,
+    "reason": "ortools not installed"
+  },
+  "seconds": 63.17127564921975,
+  "backend": "c-decide",
+  "written_utc": "2026-08-30T05:45:10Z",
+  "note": "Residual decision only. Mixed-set / full-graph \u03b1 is job 5b. Do not print CELL? from this file."
+}

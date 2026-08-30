@@ -1,0 +1,6 @@
+archived_utc=2026-08-30T06:38:13Z
+mac_clone=/Users/paulpajo/ramsey-gpu-constructions
+downloads=/Users/paulpajo/Downloads/Ramsey-GPU-Constructions
+git_head=db6a0504d8c0327a404bbed13b4766be56e85acd
+pod=69.30.85.91:22061
+tarball=/Users/paulpajo/Downloads/Ramsey-GPU-Constructions/repro-from-pod/ramsey-repro.tgz

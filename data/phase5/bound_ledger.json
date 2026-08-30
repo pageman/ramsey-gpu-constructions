@@ -1,0 +1,96 @@
+{
+  "updated": "2026-08-30T06:03:30Z",
+  "claims": [
+    {
+      "graph_id": "polarity_gq_q2",
+      "N": 15,
+      "k": 6,
+      "statement": "R(6,6) > 15",
+      "exact": true
+    },
+    {
+      "graph_id": "polarity_gq_q3",
+      "N": 40,
+      "k": 11,
+      "statement": "spectral k=11 (not a theorem)",
+      "exact": false
+    },
+    {
+      "graph_id": "polarity_gq_q3_n25_kindk4clean",
+      "N": 25,
+      "k": 8,
+      "statement": "R(8,8) > 25",
+      "exact": true
+    },
+    {
+      "graph_id": "polarity_gq_q5_n50_kindk4clean",
+      "N": 50,
+      "k": 14,
+      "statement": "R(14,14) > 50",
+      "exact": true
+    },
+    {
+      "graph_id": "yu_pool_p251_e5_kindyu_published",
+      "N": 251,
+      "k": 20,
+      "statement": "R(20,20) > 251",
+      "exact": true
+    },
+    {
+      "graph_id": "yu_pool_p251_e5_kindyu_5a_residual_shash84deed95b86e89a4",
+      "N": 251,
+      "k": 20,
+      "statement": "R(20,20) > 251",
+      "exact": true
+    },
+    {
+      "graph_id": "paley_prime_p17_kind5b_referee",
+      "N": 17,
+      "k": 4,
+      "statement": "R(4,4) > 17",
+      "exact": true
+    },
+    {
+      "graph_id": "tg_dh_n21_d3_h2",
+      "N": 21,
+      "k": 7,
+      "statement": "R(7,7) > 21",
+      "exact": true
+    },
+    {
+      "graph_id": "tg_dh_n85_d4_h2",
+      "N": 85,
+      "k": 23,
+      "statement": "R(23,23) > 85",
+      "exact": true
+    },
+    {
+      "graph_id": "tg_dh_n341_d5_h2",
+      "N": 341,
+      "k": 14,
+      "statement": "spectral k=14 (not a theorem)",
+      "exact": false
+    },
+    {
+      "graph_id": "polynomial_paley_p17",
+      "N": 17,
+      "k": 5,
+      "statement": "R(5,5) > 17",
+      "exact": true
+    },
+    {
+      "graph_id": "polynomial_paley_p29",
+      "N": 29,
+      "k": 8,
+      "statement": "R(8,8) > 29",
+      "exact": true
+    },
+    {
+      "graph_id": "polynomial_paley_p37",
+      "N": 37,
+      "k": 10,
+      "statement": "R(10,10) > 37",
+      "exact": true
+    }
+  ]
+}

@@ -1,0 +1,235 @@
+{"job": "phase0", "cell": "cert", "graph_id": "phase0_ok", "N": 0, "k_certified": 0, "exact": true, "ts": "2026-08-27T19:00:38Z"}
+{"job": "1a", "cell": "cert", "graph_id": "paley_prime_p5", "N": 5, "k_certified": 3, "exact": true, "n_1_over_k": 1.7099759466766968, "kernel": "fft", "ts": "2026-08-27T19:00:38Z"}
+{"job": "1a", "cell": "cert", "graph_id": "paley_prime_p13", "N": 13, "k_certified": 4, "exact": true, "n_1_over_k": 1.8988289221159418, "kernel": "fft", "ts": "2026-08-27T19:00:38Z"}
+{"job": "1a", "cell": "cert", "graph_id": "paley_prime_p17", "N": 17, "k_certified": 4, "exact": true, "n_1_over_k": 2.0305431848689306, "kernel": "fft", "ts": "2026-08-27T19:00:38Z"}
+{"job": "1a", "cell": "cert", "graph_id": "paley_prime_p29", "N": 29, "k_certified": 5, "exact": true, "n_1_over_k": 1.961009057454548, "kernel": "fft", "ts": "2026-08-27T19:00:38Z"}
+{"job": "1a", "cell": "cert", "graph_id": "paley_prime_p37", "N": 37, "k_certified": 5, "exact": true, "n_1_over_k": 2.058924136478517, "kernel": "fft", "ts": "2026-08-27T19:00:38Z"}
+{"job": "1a", "cell": "cert", "graph_id": "paley_prime_p41", "N": 41, "k_certified": 6, "exact": true, "n_1_over_k": 1.8569375973313509, "kernel": "fft", "ts": "2026-08-27T19:00:38Z"}
+{"job": "1a", "cell": "cert", "graph_id": "paley_prime_p53", "N": 53, "k_certified": 6, "exact": true, "n_1_over_k": 1.9381139683261848, "kernel": "fft", "ts": "2026-08-27T19:00:38Z"}
+{"job": "1a", "cell": "cert", "graph_id": "paley_prime_p61", "N": 61, "k_certified": 6, "exact": true, "n_1_over_k": 1.9840607811007638, "kernel": "fft", "ts": "2026-08-27T19:00:38Z"}
+{"job": "1a", "cell": "cert", "graph_id": "paley_prime_p73", "N": 73, "k_certified": 6, "exact": true, "ts": "2026-08-27T19:00:38Z"}
+{"job": "1a", "cell": "cert", "graph_id": "paley_prime_p89", "N": 89, "k_certified": 6, "exact": true, "ts": "2026-08-27T19:00:38Z"}
+{"job": "1a", "cell": "cert", "graph_id": "paley_prime_p97", "N": 97, "k_certified": 7, "exact": true, "ts": "2026-08-27T19:00:38Z"}
+{"job": "1a", "cell": "cert", "graph_id": "paley_prime_p101", "N": 101, "k_certified": 6, "exact": true, "ts": "2026-08-27T19:00:38Z"}
+{"job": "1c", "cell": "R(4,t)-geom", "graph_id": "polarity_gq_q2", "N": 15, "k_certified": 6, "exact": true, "n_1_over_k": 1.5704178024750197, "kernel": "generic", "ts": "2026-08-27T19:00:38Z"}
+{"job": "1c", "cell": "R(4,t)-geom", "graph_id": "polarity_pg2_q2", "N": 7, "k_certified": 4, "exact": true, "n_1_over_k": 1.6265765616977856, "kernel": "generic", "ts": "2026-08-27T19:00:38Z"}
+{"job": "1c", "cell": "R(4,t)-geom", "graph_id": "polarity_gq_q3", "N": 40, "k_certified": 11, "exact": false, "n_1_over_k": 1.3984334944969823, "kernel": "generic", "ts": "2026-08-27T19:00:38Z"}
+{"job": "1c", "cell": "R(4,t)-geom", "graph_id": "polarity_pg2_q3", "N": 13, "k_certified": 6, "exact": true, "n_1_over_k": 1.5334062370163875, "kernel": "generic", "ts": "2026-08-27T19:00:38Z"}
+{"job": "1c", "cell": "R(4,t)-geom", "graph_id": "polarity_gq_q5", "N": 156, "k_certified": 27, "exact": false, "n_1_over_k": 1.2056655088297792, "kernel": "generic", "ts": "2026-08-27T19:00:38Z"}
+{"job": "1c", "cell": "R(4,t)-geom", "graph_id": "polarity_pg2_q5", "N": 31, "k_certified": 11, "exact": false, "n_1_over_k": 1.366401517936006, "kernel": "generic", "ts": "2026-08-27T19:00:38Z"}
+{"job": "1d", "cell": "explicit-diag", "graph_id": "frankl_wilson_k3_n7_L[0, 1]", "N": 35, "k_certified": 8, "exact": false, "n_1_over_k": 1.5595830465537215, "kernel": "generic", "ts": "2026-08-27T19:00:38Z"}
+{"job": "1d", "cell": "explicit-diag", "graph_id": "frankl_wilson_k3_n8_L[0, 1]", "N": 56, "k_certified": 8, "exact": false, "n_1_over_k": 1.6539542919121921, "kernel": "generic", "ts": "2026-08-27T19:00:38Z"}
+{"job": "1d", "cell": "explicit-diag", "graph_id": "disperser_p13_kindsidon_gp", "N": 13, "k_certified": 14, "exact": true, "n_1_over_k": 1.2010674083676476, "kernel": "fft", "ts": "2026-08-27T19:00:38Z"}
+{"job": "1d", "cell": "explicit-diag", "graph_id": "disperser_p17_kindsidon_gp", "N": 17, "k_certified": 4, "exact": true, "n_1_over_k": 2.0305431848689306, "kernel": "fft", "ts": "2026-08-27T19:00:38Z"}
+{"job": "1d", "cell": "explicit-diag", "graph_id": "disperser_p19_kindsidon_gp", "N": 19, "k_certified": 20, "exact": true, "n_1_over_k": 1.1586110870184632, "kernel": "fft", "ts": "2026-08-27T19:00:38Z"}
+{"job": "1d", "cell": "explicit-diag", "graph_id": "disperser_p37_kindsidon_gp", "N": 37, "k_certified": 38, "exact": true, "n_1_over_k": 1.09968541836186, "kernel": "fft", "ts": "2026-08-27T19:00:38Z"}
+{"job": "1b", "cell": "cert", "graph_id": "quadratic_form_f2_n_bits8_formsymplectic", "N": 256, "k_certified": 17, "exact": false, "n_1_over_k": 1.3856743389806951, "kernel": "fwht", "ts": "2026-08-27T19:00:50Z"}
+{"job": "1b", "cell": "cert", "graph_id": "quadratic_form_f2_n_bits8_formadjacent_bits", "N": 256, "k_certified": 17, "exact": false, "n_1_over_k": 1.3856743389806951, "kernel": "fwht", "ts": "2026-08-27T19:00:50Z"}
+{"job": "1b", "cell": "cert", "graph_id": "gold_trace_f2_k1_n_bits8", "N": 256, "k_certified": 17, "exact": false, "n_1_over_k": 1.3856743389806951, "kernel": "fwht", "ts": "2026-08-27T19:00:50Z"}
+{"job": "1b", "cell": "cert", "graph_id": "gold_trace_f2_k4_n_bits8_kindkasami", "N": 256, "k_certified": 257, "exact": false, "n_1_over_k": 1.0218110232555024, "kernel": "fwht", "ts": "2026-08-27T19:00:50Z"}
+{"job": "1b", "cell": "cert", "graph_id": "quadratic_form_f2_n_bits9_formsymplectic", "N": 512, "k_certified": 33, "exact": false, "n_1_over_k": 1.2080894444044472, "kernel": "fwht", "ts": "2026-08-27T19:00:50Z"}
+{"job": "1b", "cell": "cert", "graph_id": "quadratic_form_f2_n_bits9_formadjacent_bits", "N": 512, "k_certified": 33, "exact": false, "n_1_over_k": 1.2080894444044472, "kernel": "fwht", "ts": "2026-08-27T19:00:50Z"}
+{"job": "1b", "cell": "cert", "graph_id": "gold_trace_f2_k1_n_bits9", "N": 512, "k_certified": 18, "exact": false, "n_1_over_k": 1.414213562373095, "kernel": "fwht", "ts": "2026-08-27T19:00:51Z"}
+{"job": "1b", "cell": "cert", "graph_id": "quadratic_form_f2_n_bits10_formsymplectic", "N": 1024, "k_certified": 33, "exact": false, "ts": "2026-08-27T19:00:51Z"}
+{"job": "1b", "cell": "cert", "graph_id": "quadratic_form_f2_n_bits10_formadjacent_bits", "N": 1024, "k_certified": 33, "exact": false, "ts": "2026-08-27T19:00:51Z"}
+{"job": "1b", "cell": "cert", "graph_id": "gold_trace_f2_k1_n_bits10", "N": 1024, "k_certified": 65, "exact": false, "ts": "2026-08-27T19:00:51Z"}
+{"job": "1b", "cell": "cert", "graph_id": "gold_trace_f2_k5_n_bits10_kindkasami", "N": 1024, "k_certified": 1025, "exact": false, "ts": "2026-08-27T19:00:52Z"}
+{"job": "2c", "cell": "R(3,k)", "graph_id": "circulant_r3_n5", "N": 5, "k_certified": 3, "exact": true, "n_1_over_k": 1.7099759466766968, "kernel": "fft", "ts": "2026-08-27T19:00:52Z"}
+{"job": "2c", "cell": "R(3,k)", "graph_id": "circulant_r3_n6", "N": 6, "k_certified": 4, "exact": true, "n_1_over_k": 1.5650845800732873, "kernel": "fft", "ts": "2026-08-27T19:00:52Z"}
+{"job": "2c", "cell": "R(3,k)", "graph_id": "circulant_r3_n7", "N": 7, "k_certified": 4, "exact": true, "n_1_over_k": 1.6265765616977856, "kernel": "fft", "ts": "2026-08-27T19:00:52Z"}
+{"job": "2c", "cell": "R(3,k)", "graph_id": "circulant_r3_n8", "N": 8, "k_certified": 4, "exact": true, "n_1_over_k": 1.681792830507429, "kernel": "fft", "ts": "2026-08-27T19:00:52Z"}
+{"job": "2c", "cell": "R(3,k)", "graph_id": "circulant_r3_n9", "N": 9, "k_certified": 5, "exact": true, "n_1_over_k": 1.5518455739153598, "kernel": "fft", "ts": "2026-08-27T19:00:52Z"}
+{"job": "2c", "cell": "R(3,k)", "graph_id": "circulant_r3_n10", "N": 10, "k_certified": 5, "exact": true, "n_1_over_k": 1.5848931924611136, "kernel": "fft", "ts": "2026-08-27T19:00:52Z"}
+{"job": "2c", "cell": "R(3,k)", "graph_id": "circulant_r3_n11", "N": 11, "k_certified": 5, "exact": true, "n_1_over_k": 1.615394266202178, "kernel": "fft", "ts": "2026-08-27T19:00:52Z"}
+{"job": "2c", "cell": "R(3,k)", "graph_id": "circulant_r3_n12", "N": 12, "k_certified": 5, "exact": true, "n_1_over_k": 1.6437518295172258, "kernel": "fft", "ts": "2026-08-27T19:00:52Z"}
+{"job": "2c", "cell": "R(3,k)", "graph_id": "circulant_r3_n13", "N": 13, "k_certified": 5, "exact": true, "n_1_over_k": 1.6702776523348104, "kernel": "fft", "ts": "2026-08-27T19:00:52Z"}
+{"job": "2c", "cell": "R(3,k)", "graph_id": "circulant_r3_n14", "N": 14, "k_certified": 6, "exact": true, "n_1_over_k": 1.5524632891554087, "kernel": "fft", "ts": "2026-08-27T19:00:52Z"}
+{"job": "2c", "cell": "R(3,k)", "graph_id": "circulant_r3_n15", "N": 15, "k_certified": 7, "exact": true, "n_1_over_k": 1.4723567001803468, "kernel": "fft", "ts": "2026-08-27T19:00:52Z"}
+{"job": "2c", "cell": "R(3,k)", "graph_id": "circulant_r3_n16", "N": 16, "k_certified": 7, "exact": true, "n_1_over_k": 1.4859942891369484, "kernel": "fft", "ts": "2026-08-27T19:00:52Z"}
+{"job": "2c", "cell": "R(3,k)", "graph_id": "circulant_r3_n17", "N": 17, "k_certified": 7, "exact": true, "n_1_over_k": 1.498919872071562, "kernel": "fft", "ts": "2026-08-27T19:00:52Z"}
+{"job": "2c", "cell": "R(3,k)", "graph_id": "circulant_r3_n18", "N": 18, "k_certified": 7, "exact": true, "n_1_over_k": 1.511209390509403, "kernel": "fft", "ts": "2026-08-27T19:00:52Z"}
+{"job": "2c", "cell": "R(3,k)", "graph_id": "circulant_r3_n19", "N": 19, "k_certified": 7, "exact": true, "n_1_over_k": 1.5229269982187534, "kernel": "fft", "ts": "2026-08-27T19:00:52Z"}
+{"job": "2c", "cell": "R(3,k)", "graph_id": "circulant_r3_n20", "N": 20, "k_certified": 8, "exact": true, "n_1_over_k": 1.4542154334489537, "kernel": "fft", "ts": "2026-08-27T19:00:52Z"}
+{"job": "2c", "cell": "R(3,k)", "graph_id": "circulant_r3_n21", "N": 21, "k_certified": 7, "exact": true, "n_1_over_k": 1.5448576602501738, "kernel": "fft", "ts": "2026-08-27T19:00:52Z"}
+{"job": "2c", "cell": "R(3,k)", "graph_id": "circulant_r3_n22", "N": 22, "k_certified": 9, "exact": true, "n_1_over_k": 1.4098018484275194, "kernel": "fft", "ts": "2026-08-27T19:00:52Z"}
+{"job": "2c", "cell": "R(3,k)", "graph_id": "circulant_r3_n23", "N": 23, "k_certified": 9, "exact": true, "n_1_over_k": 1.4167822033014115, "kernel": "fft", "ts": "2026-08-27T19:00:52Z"}
+{"job": "2c", "cell": "R(3,k)", "graph_id": "circulant_r3_n24", "N": 24, "k_certified": 10, "exact": true, "n_1_over_k": 1.3741088103166372, "kernel": "fft", "ts": "2026-08-27T19:00:52Z"}
+{"job": "2c", "cell": "R(3,k)", "graph_id": "circulant_r3_n25", "N": 25, "k_certified": 10, "exact": true, "n_1_over_k": 1.379729661461215, "kernel": "fft", "ts": "2026-08-27T19:00:52Z"}
+{"job": "2c", "cell": "R(3,k)", "graph_id": "circulant_r3_n26", "N": 26, "k_certified": 10, "exact": true, "n_1_over_k": 1.3851516854212416, "kernel": "fft", "ts": "2026-08-27T19:00:52Z"}
+{"job": "2c", "cell": "R(3,k)", "graph_id": "circulant_r3_n27", "N": 27, "k_certified": 10, "exact": true, "n_1_over_k": 1.3903891703159095, "kernel": "fft", "ts": "2026-08-27T19:00:52Z"}
+{"job": "2c", "cell": "R(3,k)", "graph_id": "circulant_r3_n28", "N": 28, "k_certified": 11, "exact": true, "n_1_over_k": 1.3538165566025344, "kernel": "fft", "ts": "2026-08-27T19:00:52Z"}
+{"job": "2c", "cell": "R(3,k)", "graph_id": "circulant_r3_n29", "N": 29, "k_certified": 9, "exact": true, "n_1_over_k": 1.4537464474156747, "kernel": "fft", "ts": "2026-08-27T19:00:52Z"}
+{"job": "2c", "cell": "R(3,k)", "graph_id": "circulant_r3_n32", "N": 32, "k_certified": 10, "exact": true, "n_1_over_k": 1.4142135623730951, "kernel": "fft", "ts": "2026-08-27T19:00:52Z"}
+{"job": "2c", "cell": "R(3,k)", "graph_id": "circulant_r3_n33", "N": 33, "k_certified": 13, "exact": true, "n_1_over_k": 1.3086055702762218, "kernel": "fft", "ts": "2026-08-27T19:00:52Z"}
+{"job": "2c", "cell": "R(3,k)", "graph_id": "circulant_r3_n35", "N": 35, "k_certified": 15, "exact": true, "n_1_over_k": 1.267470527946047, "kernel": "fft", "ts": "2026-08-27T19:00:52Z"}
+{"job": "2c", "cell": "R(3,k)", "graph_id": "circulant_r3_n36", "N": 36, "k_certified": 14, "exact": true, "n_1_over_k": 1.2917083420907467, "kernel": "fft", "ts": "2026-08-27T19:00:52Z"}
+{"job": "2c", "cell": "R(3,k)", "graph_id": "circulant_r3_n41", "N": 41, "k_certified": 13, "exact": true, "n_1_over_k": 1.330639148718466, "kernel": "fft", "ts": "2026-08-27T19:00:52Z"}
+{"job": "2c", "cell": "R(3,k)", "graph_id": "circulant_r3_n47", "N": 47, "k_certified": 13, "exact": true, "n_1_over_k": 1.3446922818258509, "kernel": "fft", "ts": "2026-08-27T19:00:52Z"}
+{"job": "3a", "cell": "R(k,k)", "graph_id": "block_circulant_n34", "N": 34, "k_certified": 7, "exact": false, "n_1_over_k": 1.6549417125915038, "kernel": "generic", "ts": "2026-08-27T19:00:52Z"}
+{"job": "3a", "cell": "R(k,k)", "graph_id": "block_circulant_n74", "N": 74, "k_certified": 8, "exact": false, "n_1_over_k": 1.7125922128949782, "kernel": "generic", "ts": "2026-08-27T19:00:52Z"}
+{"job": "3a", "cell": "R(k,k)", "graph_id": "block_circulant_n14", "N": 14, "k_certified": 5, "exact": true, "n_1_over_k": 1.6952182030724354, "kernel": "generic", "ts": "2026-08-27T19:00:52Z"}
+{"job": "3b", "cell": "R(4,k)", "graph_id": "circulant_r4_n17", "N": 17, "k_certified": 4, "exact": true, "n_1_over_k": 2.0305431848689306, "kernel": "fft", "ts": "2026-08-27T19:00:52Z"}
+{"job": "3b", "cell": "R(4,k)", "graph_id": "circulant_r4_n19", "N": 19, "k_certified": 5, "exact": true, "n_1_over_k": 1.8019831273171423, "kernel": "fft", "ts": "2026-08-27T19:00:52Z"}
+{"job": "3b", "cell": "R(4,k)", "graph_id": "circulant_r4_n23", "N": 23, "k_certified": 7, "exact": true, "n_1_over_k": 1.5650656079602396, "kernel": "fft", "ts": "2026-08-27T19:00:52Z"}
+{"job": "3b", "cell": "R(4,k)", "graph_id": "circulant_r4_n29", "N": 29, "k_certified": 7, "exact": true, "n_1_over_k": 1.6177596522879036, "kernel": "fft", "ts": "2026-08-27T19:00:52Z"}
+{"job": "3b", "cell": "R(4,k)", "graph_id": "circulant_r4_n31", "N": 31, "k_certified": 8, "exact": true, "n_1_over_k": 1.536102555746382, "kernel": "fft", "ts": "2026-08-27T19:00:52Z"}
+{"job": "3b", "cell": "R(4,k)", "graph_id": "circulant_r4_n37", "N": 37, "k_certified": 9, "exact": true, "n_1_over_k": 1.4936355304176858, "kernel": "fft", "ts": "2026-08-27T19:00:52Z"}
+{"job": "3b", "cell": "R(4,k)", "graph_id": "circulant_r4_n41", "N": 41, "k_certified": 7, "exact": true, "n_1_over_k": 1.6997994869342874, "kernel": "fft", "ts": "2026-08-27T19:00:52Z"}
+{"job": "3b", "cell": "R(4,k)", "graph_id": "circulant_r4_n43", "N": 43, "k_certified": 11, "exact": true, "n_1_over_k": 1.407657933475101, "kernel": "fft", "ts": "2026-08-27T19:00:52Z"}
+{"job": "3b", "cell": "R(4,k)", "graph_id": "circulant_r4_n47", "N": 47, "k_certified": 8, "exact": true, "n_1_over_k": 1.6181256127680217, "kernel": "fft", "ts": "2026-08-27T19:00:52Z"}
+{"job": "3c", "cell": "R(4,t)-geom", "graph_id": "polarity_gq_q7", "N": 400, "k_certified": 51, "exact": false, "n_1_over_k": 1.1246587957667833, "kernel": "generic", "ts": "2026-08-27T19:00:52Z"}
+{"job": "3d", "cell": "explicit-diag", "graph_id": "quadratic_form_f2_n_bits8_formanf_seed1", "N": 256, "k_certified": 17, "exact": false, "n_1_over_k": 1.3856743389806951, "kernel": "fwht", "ts": "2026-08-27T19:00:52Z"}
+{"job": "3d", "cell": "explicit-diag", "graph_id": "quadratic_form_f2_n_bits9_formanf_seed1", "N": 512, "k_certified": 18, "exact": false, "n_1_over_k": 1.414213562373095, "kernel": "fwht", "ts": "2026-08-27T19:00:52Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p13_e4_mask5", "N": 13, "k_certified": 4, "exact": true, "n_1_over_k": 1.8988289221159418, "kernel": "fft", "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p13_e4_mask10", "N": 13, "k_certified": 4, "exact": true, "n_1_over_k": 1.8988289221159418, "kernel": "fft", "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p13_e6_mask9", "N": 13, "k_certified": 5, "exact": true, "n_1_over_k": 1.6702776523348104, "kernel": "fft", "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p13_e6_mask18", "N": 13, "k_certified": 5, "exact": true, "n_1_over_k": 1.6702776523348104, "kernel": "fft", "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p17_e4_mask5", "N": 17, "k_certified": 4, "exact": true, "n_1_over_k": 2.0305431848689306, "kernel": "fft", "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p17_e4_mask10", "N": 17, "k_certified": 4, "exact": true, "n_1_over_k": 2.0305431848689306, "kernel": "fft", "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p17_e8_mask85", "N": 17, "k_certified": 4, "exact": true, "n_1_over_k": 2.0305431848689306, "kernel": "fft", "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p17_e8_mask170", "N": 17, "k_certified": 4, "exact": true, "n_1_over_k": 2.0305431848689306, "kernel": "fft", "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p19_e6_mask9", "N": 19, "k_certified": 5, "exact": true, "n_1_over_k": 1.8019831273171423, "kernel": "fft", "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p19_e6_mask18", "N": 19, "k_certified": 5, "exact": true, "n_1_over_k": 1.8019831273171423, "kernel": "fft", "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p29_e4_mask5", "N": 29, "k_certified": 5, "exact": true, "n_1_over_k": 1.961009057454548, "kernel": "fft", "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p29_e4_mask10", "N": 29, "k_certified": 5, "exact": true, "n_1_over_k": 1.961009057454548, "kernel": "fft", "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p29_e7_mask19", "N": 29, "k_certified": 6, "exact": true, "n_1_over_k": 1.7528025632357591, "kernel": "fft", "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p29_e7_mask25", "N": 29, "k_certified": 6, "exact": true, "n_1_over_k": 1.7528025632357591, "kernel": "fft", "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p31_e5_mask9", "N": 31, "k_certified": 5, "exact": true, "n_1_over_k": 1.9873407546644581, "kernel": "fft", "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p31_e5_mask10", "N": 31, "k_certified": 5, "exact": true, "n_1_over_k": 1.9873407546644581, "kernel": "fft", "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p31_e6_mask9", "N": 31, "k_certified": 7, "exact": true, "n_1_over_k": 1.6332462531687597, "kernel": "fft", "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p31_e6_mask18", "N": 31, "k_certified": 7, "exact": true, "n_1_over_k": 1.6332462531687597, "kernel": "fft", "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p37_e4_mask5", "N": 37, "k_certified": 5, "exact": true, "n_1_over_k": 2.058924136478517, "kernel": "fft", "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p37_e4_mask10", "N": 37, "k_certified": 5, "exact": true, "n_1_over_k": 2.058924136478517, "kernel": "fft", "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p37_e6_mask9", "N": 37, "k_certified": 8, "exact": true, "n_1_over_k": 1.57045398358553, "kernel": "fft", "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p37_e6_mask18", "N": 37, "k_certified": 8, "exact": true, "n_1_over_k": 1.57045398358553, "kernel": "fft", "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p41_e4_mask5", "N": 41, "k_certified": 6, "exact": true, "n_1_over_k": 1.8569375973313509, "kernel": "fft", "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p41_e4_mask10", "N": 41, "k_certified": 6, "exact": true, "n_1_over_k": 1.8569375973313509, "kernel": "fft", "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p41_e5_mask11", "N": 41, "k_certified": 6, "exact": true, "n_1_over_k": 1.8569375973313509, "kernel": "fft", "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p41_e5_mask20", "N": 41, "k_certified": 6, "exact": true, "n_1_over_k": 1.8569375973313509, "kernel": "fft", "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p41_e8_mask85", "N": 41, "k_certified": 6, "exact": true, "n_1_over_k": 1.8569375973313509, "kernel": "fft", "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p41_e8_mask170", "N": 41, "k_certified": 6, "exact": true, "n_1_over_k": 1.8569375973313509, "kernel": "fft", "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p43_e6_mask9", "N": 43, "k_certified": 8, "exact": true, "n_1_over_k": 1.6002342334892772, "kernel": "fft", "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p43_e6_mask18", "N": 43, "k_certified": 8, "exact": true, "n_1_over_k": 1.6002342334892772, "kernel": "fft", "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p43_e7_mask51", "N": 43, "k_certified": 8, "exact": true, "n_1_over_k": 1.6002342334892772, "kernel": "fft", "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p43_e7_mask76", "N": 43, "k_certified": 8, "exact": true, "n_1_over_k": 1.6002342334892772, "kernel": "fft", "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p53_e4_mask5", "N": 53, "k_certified": 6, "exact": true, "n_1_over_k": 1.9381139683261848, "kernel": "fft", "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p53_e4_mask10", "N": 53, "k_certified": 6, "exact": true, "n_1_over_k": 1.9381139683261848, "kernel": "fft", "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p61_e4_mask5", "N": 61, "k_certified": 6, "exact": true, "n_1_over_k": 1.9840607811007638, "kernel": "fft", "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p61_e4_mask10", "N": 61, "k_certified": 6, "exact": true, "n_1_over_k": 1.9840607811007638, "kernel": "fft", "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p61_e5_mask3", "N": 61, "k_certified": 8, "exact": true, "n_1_over_k": 1.6717303588411743, "kernel": "fft", "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p61_e5_mask6", "N": 61, "k_certified": 8, "exact": true, "n_1_over_k": 1.6717303588411743, "kernel": "fft", "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p61_e6_mask9", "N": 61, "k_certified": 9, "exact": true, "n_1_over_k": 1.5789558319019596, "kernel": "fft", "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p61_e6_mask18", "N": 61, "k_certified": 9, "exact": true, "n_1_over_k": 1.5789558319019596, "kernel": "fft", "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p67_e6_mask9", "N": 67, "k_certified": 9, "exact": true, "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p67_e6_mask27", "N": 67, "k_certified": 9, "exact": true, "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p71_e5_mask7", "N": 71, "k_certified": 8, "exact": true, "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p71_e5_mask12", "N": 71, "k_certified": 8, "exact": true, "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p71_e7_mask7", "N": 71, "k_certified": 8, "exact": true, "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p71_e7_mask14", "N": 71, "k_certified": 8, "exact": true, "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p73_e4_mask5", "N": 73, "k_certified": 6, "exact": true, "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p73_e4_mask10", "N": 73, "k_certified": 6, "exact": true, "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p73_e6_mask9", "N": 73, "k_certified": 9, "exact": true, "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p73_e6_mask54", "N": 73, "k_certified": 9, "exact": true, "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p73_e8_mask85", "N": 73, "k_certified": 6, "exact": true, "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p73_e8_mask170", "N": 73, "k_certified": 6, "exact": true, "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p79_e6_mask18", "N": 79, "k_certified": 10, "exact": true, "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p79_e6_mask45", "N": 79, "k_certified": 10, "exact": true, "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p89_e4_mask5", "N": 89, "k_certified": 6, "exact": true, "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p89_e4_mask10", "N": 89, "k_certified": 6, "exact": true, "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p89_e8_mask85", "N": 89, "k_certified": 6, "exact": true, "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p89_e8_mask170", "N": 89, "k_certified": 6, "exact": true, "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p97_e4_mask5", "N": 97, "k_certified": 7, "exact": true, "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p97_e4_mask10", "N": 97, "k_certified": 7, "exact": true, "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p97_e6_mask9", "N": 97, "k_certified": 9, "exact": true, "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p97_e6_mask54", "N": 97, "k_certified": 9, "exact": true, "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p97_e8_mask85", "N": 97, "k_certified": 7, "exact": true, "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p97_e8_mask170", "N": 97, "k_certified": 7, "exact": true, "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p101_e4_mask5", "N": 101, "k_certified": 6, "exact": true, "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p101_e4_mask10", "N": 101, "k_certified": 6, "exact": true, "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p101_e5_mask10", "N": 101, "k_certified": 11, "exact": true, "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p101_e5_mask21", "N": 101, "k_certified": 11, "exact": true, "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p103_e6_mask9", "N": 103, "k_certified": 11, "exact": false, "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p103_e6_mask27", "N": 103, "k_certified": 11, "exact": false, "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p109_e4_mask5", "N": 109, "k_certified": 7, "exact": true, "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p109_e4_mask10", "N": 109, "k_certified": 7, "exact": true, "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p109_e6_mask9", "N": 109, "k_certified": 12, "exact": false, "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p109_e6_mask18", "N": 109, "k_certified": 12, "exact": false, "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p113_e4_mask5", "N": 113, "k_certified": 8, "exact": true, "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p113_e4_mask10", "N": 113, "k_certified": 8, "exact": true, "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p113_e7_mask29", "N": 113, "k_certified": 9, "exact": true, "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p113_e7_mask39", "N": 113, "k_certified": 9, "exact": true, "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p113_e8_mask85", "N": 113, "k_certified": 8, "exact": true, "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p113_e8_mask170", "N": 113, "k_certified": 8, "exact": true, "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p127_e6_mask9", "N": 127, "k_certified": 17, "exact": false, "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p127_e6_mask54", "N": 127, "k_certified": 17, "exact": false, "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p127_e7_mask7", "N": 127, "k_certified": 10, "exact": false, "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p127_e7_mask14", "N": 127, "k_certified": 10, "exact": false, "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p131_e5_mask3", "N": 131, "k_certified": 13, "exact": false, "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p131_e5_mask6", "N": 131, "k_certified": 13, "exact": false, "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p137_e4_mask5", "N": 137, "k_certified": 12, "exact": false, "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p137_e4_mask10", "N": 137, "k_certified": 12, "exact": false, "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p137_e8_mask85", "N": 137, "k_certified": 12, "exact": false, "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p137_e8_mask170", "N": 137, "k_certified": 12, "exact": false, "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p139_e6_mask9", "N": 139, "k_certified": 20, "exact": false, "ts": "2026-08-27T19:01:01Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p139_e6_mask18", "N": 139, "k_certified": 20, "exact": false, "ts": "2026-08-27T19:01:02Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p149_e4_mask5", "N": 149, "k_certified": 13, "exact": false, "ts": "2026-08-27T19:01:02Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p149_e4_mask10", "N": 149, "k_certified": 13, "exact": false, "ts": "2026-08-27T19:01:02Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p151_e5_mask5", "N": 151, "k_certified": 11, "exact": false, "ts": "2026-08-27T19:01:02Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p151_e5_mask9", "N": 151, "k_certified": 11, "exact": false, "ts": "2026-08-27T19:01:02Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p151_e6_mask9", "N": 151, "k_certified": 13, "exact": false, "ts": "2026-08-27T19:01:02Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p151_e6_mask18", "N": 151, "k_certified": 13, "exact": false, "ts": "2026-08-27T19:01:02Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p157_e4_mask5", "N": 157, "k_certified": 13, "exact": false, "ts": "2026-08-27T19:01:02Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p157_e4_mask10", "N": 157, "k_certified": 13, "exact": false, "ts": "2026-08-27T19:01:02Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p157_e6_mask9", "N": 157, "k_certified": 16, "exact": false, "ts": "2026-08-27T19:01:02Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p157_e6_mask18", "N": 157, "k_certified": 16, "exact": false, "ts": "2026-08-27T19:01:02Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p163_e6_mask9", "N": 163, "k_certified": 13, "exact": false, "ts": "2026-08-27T19:01:02Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p163_e6_mask27", "N": 163, "k_certified": 13, "exact": false, "ts": "2026-08-27T19:01:02Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p173_e4_mask5", "N": 173, "k_certified": 14, "exact": false, "ts": "2026-08-27T19:01:02Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p173_e4_mask10", "N": 173, "k_certified": 14, "exact": false, "ts": "2026-08-27T19:01:02Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p181_e4_mask5", "N": 181, "k_certified": 14, "exact": false, "ts": "2026-08-27T19:01:02Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p181_e4_mask10", "N": 181, "k_certified": 14, "exact": false, "ts": "2026-08-27T19:01:02Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p181_e5_mask9", "N": 181, "k_certified": 12, "exact": false, "ts": "2026-08-27T19:01:02Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p181_e5_mask22", "N": 181, "k_certified": 12, "exact": false, "ts": "2026-08-27T19:01:02Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p181_e6_mask27", "N": 181, "k_certified": 15, "exact": false, "ts": "2026-08-27T19:01:02Z"}
+{"job": "2a", "cell": "cert", "graph_id": "cyclotomic_union_p181_e6_mask36", "N": 181, "k_certified": 15, "exact": false, "ts": "2026-08-27T19:01:02Z"}
+{"job": "2b", "cell": "cert", "graph_id": "polarity_gq_q2", "N": 15, "k_certified": 6, "exact": true, "n_1_over_k": 1.5704178024750197, "kernel": "generic", "ts": "2026-08-27T19:01:02Z"}
+{"job": "2b", "cell": "cert", "graph_id": "polarity_gq_q3", "N": 40, "k_certified": 11, "exact": false, "n_1_over_k": 1.3984334944969823, "kernel": "generic", "ts": "2026-08-27T19:01:02Z"}
+{"job": "4c", "cell": "R(4,t)-geom", "graph_id": "polarity_gq_q3_n25_kindk4clean", "N": 25, "k_certified": 8, "exact": true, "omega": 3, "alpha": 7, "ts": "2026-08-29T18:59:57Z"}
+{"job": "4c", "cell": "R(4,t)-geom", "graph_id": "polarity_gq_q5_n50_kindk4clean", "N": 50, "k_certified": 14, "exact": true, "omega": 3, "alpha": 13, "ts": "2026-08-29T18:59:57Z"}
+{"job": "4b", "cell": "R(3,k)", "graph_id": "circulant_r3_t12_n51", "N": 51, "k_certified": 14, "exact": false, "omega": null, "alpha": null, "ts": "2026-08-29T19:00:13Z"}
+{"job": "4a", "cell": "R(4,t)", "graph_id": "yu_pool_p251_e5_kindyu_published", "N": 251, "k_certified": 20, "exact": true, "omega": 3, "alpha": 19, "ts": "2026-08-29T19:00:42Z"}
+{"job": "4a", "checkpoint": true, "p": 251, "ts": "2026-08-29T19:00:42Z"}
+{"job": "5a", "cell": "R(4,20)", "graph_id": "yu_residual_186", "N": 186, "exact": true, "alpha_certified": true, "nodes": 216275634, "backend": "c-decide", "ts": "2026-08-30T05:45:10Z"}
+{"job": "5a", "cell": "R(4,20)", "graph_id": "yu_pool_p251_e5_kindyu_5a_residual_shash84deed95b86e89a4", "N": 251, "k_certified": 20, "exact": true, "omega": 3, "alpha": 19, "ts": "2026-08-30T05:45:10Z"}
+{"job": "5b", "cell": "cert", "graph_id": "decide_alpha_le", "N": 256, "exact": false, "skip_n257": true, "mixed_rule": "CELL? only if mixed_ok", "ts": "2026-08-30T05:45:10Z"}
+{"job": "5b", "cell": "cert", "graph_id": "paley_prime_p17_kind5b_referee", "N": 17, "k_certified": 4, "exact": true, "omega": 3, "alpha": 3, "ts": "2026-08-30T05:45:10Z"}
+{"job": "5c", "checkpoint": true, "p": 211, "ts": "2026-08-30T05:45:10Z"}
+{"job": "5c", "checkpoint": true, "p": 233, "ts": "2026-08-30T05:45:39Z"}
+{"job": "5c", "checkpoint": true, "p": 241, "ts": "2026-08-30T05:46:00Z"}
+{"job": "5c", "checkpoint": true, "p": 251, "ts": "2026-08-30T05:50:06Z"}
+{"job": "5c", "checkpoint": true, "p": 257, "ts": "2026-08-30T05:50:43Z"}
+{"job": "5c", "checkpoint": true, "p": 271, "ts": "2026-08-30T05:52:42Z"}
+{"job": "5c", "checkpoint": true, "p": 281, "ts": "2026-08-30T05:53:22Z"}
+{"job": "5c", "checkpoint": true, "p": 311, "ts": "2026-08-30T05:57:17Z"}
+{"job": "5c", "checkpoint": true, "p": 313, "ts": "2026-08-30T05:58:06Z"}
+{"job": "5c", "checkpoint": true, "p": 331, "ts": "2026-08-30T05:58:37Z"}
+{"job": "5c", "checkpoint": true, "p": 337, "ts": "2026-08-30T05:59:30Z"}
+{"job": "5c", "checkpoint": true, "p": 353, "ts": "2026-08-30T06:02:44Z"}
+{"job": "5d", "n": 501, "residual": 362, "exact": false, "ts": "2026-08-30T06:03:25Z"}
+{"job": "5d", "n": 503, "residual": 368, "exact": false, "ts": "2026-08-30T06:03:25Z"}
+{"job": "5d", "n": 505, "residual": 338, "exact": false, "ts": "2026-08-30T06:03:25Z"}
+{"job": "5d", "n": 507, "residual": 340, "exact": false, "ts": "2026-08-30T06:03:26Z"}
+{"job": "5d", "n": 509, "residual": 340, "exact": false, "ts": "2026-08-30T06:03:27Z"}
+{"job": "5d", "n": 511, "residual": 342, "exact": false, "ts": "2026-08-30T06:03:27Z"}
+{"job": "5d", "n": 513, "residual": 344, "exact": false, "ts": "2026-08-30T06:03:28Z"}
+{"job": "5d", "n": 515, "residual": 344, "exact": false, "ts": "2026-08-30T06:03:28Z"}
+{"job": "5d", "n": 517, "residual": 346, "exact": false, "ts": "2026-08-30T06:03:29Z"}
+{"job": "5d", "n": 519, "residual": 362, "exact": false, "ts": "2026-08-30T06:03:29Z"}
+{"job": "5d", "n": 521, "residual": 374, "exact": false, "ts": "2026-08-30T06:03:29Z"}
+{"job": "5e", "cell": "R(4,t)-geom", "graph_id": "polarity_gq_q7_n84_kind5e", "N": 84, "k_certified": 21, "exact": false, "omega": null, "alpha": null, "ts": "2026-08-30T06:03:30Z"}
+{"job": "5f", "cell": "cert", "graph_id": "tg_dh_n21_d3_h2", "N": 21, "k_certified": 7, "exact": true, "n_1_over_k": 1.5448576602501738, "kernel": "fft", "ts": "2026-08-30T06:03:30Z"}
+{"job": "5f", "cell": "cert", "graph_id": "tg_dh_n85_d4_h2", "N": 85, "k_certified": 23, "exact": true, "n_1_over_k": 1.2130753542889852, "kernel": "fft", "ts": "2026-08-30T06:03:30Z"}
+{"job": "5f", "cell": "cert", "graph_id": "tg_dh_n341_d5_h2", "N": 341, "k_certified": 14, "exact": false, "n_1_over_k": 1.5167396046124493, "kernel": "fft", "ts": "2026-08-30T06:03:30Z"}
+{"job": "5f", "cell": "cert", "graph_id": "polynomial_paley_p17", "N": 17, "k_certified": 5, "exact": true, "n_1_over_k": 1.762340347832317, "kernel": "fft", "ts": "2026-08-30T06:03:30Z"}
+{"job": "5f", "cell": "cert", "graph_id": "polynomial_paley_p29", "N": 29, "k_certified": 8, "exact": true, "n_1_over_k": 1.5233501853172446, "kernel": "fft", "ts": "2026-08-30T06:03:30Z"}
+{"job": "5f", "cell": "cert", "graph_id": "polynomial_paley_p37", "N": 37, "k_certified": 10, "exact": true, "n_1_over_k": 1.4348951656753595, "kernel": "fft", "ts": "2026-08-30T06:03:30Z"}

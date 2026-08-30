@@ -1,0 +1,10 @@
+commit 07a4e8cde6a4762d2731ad04afda289a841e3d7a
+Author:     Cursor Agent <cursoragent@cursor.com>
+AuthorDate: Sun Aug 30 05:24:29 2026 +0000
+Commit:     Cursor Agent <cursoragent@cursor.com>
+CommitDate: Sun Aug 30 05:24:29 2026 +0000
+
+    Add a Mac preflight so /workspace is not run on the laptop.
+    
+    pod-phase5.sh is pod-only. mac-phase5.sh tells the laptop to fetch,
+    SSH, or scp+start when RAMSEY_POD_HOST/PORT are set.

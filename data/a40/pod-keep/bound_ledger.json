@@ -1,0 +1,61 @@
+{
+  "updated": "2026-08-29T23:53:16Z",
+  "claims": [
+    {
+      "graph_id": "polarity_gq_q2",
+      "N": 15,
+      "k": 6,
+      "statement": "R(6,6) > 15",
+      "exact": true
+    },
+    {
+      "graph_id": "polarity_gq_q3",
+      "N": 40,
+      "k": 11,
+      "statement": "spectral k=11 (not a theorem)",
+      "exact": false
+    },
+    {
+      "graph_id": "polarity_gq_q3_n25_kindk4clean",
+      "N": 25,
+      "k": 8,
+      "statement": "R(8,8) > 25",
+      "exact": true
+    },
+    {
+      "graph_id": "polarity_gq_q5_n50_kindk4clean",
+      "N": 50,
+      "k": 14,
+      "statement": "R(14,14) > 50",
+      "exact": true
+    },
+    {
+      "graph_id": "yu_pool_p251_e5_kindyu_published",
+      "N": 251,
+      "k": 20,
+      "statement": "R(20,20) > 251",
+      "exact": true
+    },
+    {
+      "graph_id": "yu_pool_p337_e4",
+      "N": 337,
+      "k": 20,
+      "statement": "R(20,20) > 337",
+      "exact": true
+    },
+    {
+      "graph_id": "yu_pool_p353_e8",
+      "N": 353,
+      "k": 20,
+      "statement": "R(20,20) > 353",
+      "exact": true
+    },
+    {
+      "graph_id": "polarity_gq_q7_n84_kindk4clean",
+      "N": 84,
+      "k": 22,
+      "statement": "R(22,22) > 84",
+      "exact": true
+    }
+  ]
+}

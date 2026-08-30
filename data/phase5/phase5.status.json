@@ -1,0 +1,31 @@
+{
+  "phase": "phase5",
+  "started_utc": "2026-08-30T05:43:58Z",
+  "state": "done",
+  "halt": false,
+  "updated_utc": "2026-08-30T06:03:30Z",
+  "job": "5f",
+  "alpha_certified": true,
+  "decide": {
+    "found": false,
+    "lower": 15,
+    "exact": true,
+    "nodes": 216275634,
+    "seconds": 63.17127564921975,
+    "timed_out": false,
+    "backend": "c-decide",
+    "n": 186
+  },
+  "cpsat_lb18": {
+    "available": false,
+    "found": false,
+    "reason": "ortools not installed"
+  },
+  "skip_n257": true,
+  "paley17_exact": true,
+  "p_lo": 200,
+  "p_hi": 400,
+  "p": 353,
+  "graphs": 9,
+  "finished_utc": "2026-08-30T06:03:30Z"
+}
