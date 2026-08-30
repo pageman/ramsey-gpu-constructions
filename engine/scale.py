@@ -48,6 +48,9 @@ LIMITS = {
         "look1_walks": 4,
         "look1_anneal": 8,
         "look6_sat": 8.0,
+        "look6_rounds": 8,
+        "look6_cegis": 20.0,
+        "look6_witness": 2.0,
     },
     "runpod": {
         "paley_max": 997,
@@ -82,6 +85,9 @@ LIMITS = {
         "look1_walks": 48,
         "look1_anneal": 64,
         "look6_sat": 45.0,
+        "look6_rounds": 32,
+        "look6_cegis": 90.0,
+        "look6_witness": 3.0,
     },
 }
 

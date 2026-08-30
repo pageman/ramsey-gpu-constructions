@@ -148,20 +148,25 @@ def _closed(nbr: list[int]) -> list[int]:
     return [nbr[v] | (1 << v) for v in range(len(nbr))]
 
 
-def greedy_mis(nbr: list[int], order: list[int] | None = None) -> int:
+def greedy_mis_set(nbr: list[int], order: list[int] | None = None) -> list[int]:
+    """Greedy independent set as vertex indices (low degree first)."""
     n = len(nbr)
     if n == 0:
-        return 0
+        return []
     if order is None:
         order = [v for _, v in sorted((nbr[v].bit_count(), v) for v in range(n))]
     blocked = 0
-    size = 0
+    out: list[int] = []
     for v in order:
         if (blocked >> v) & 1:
             continue
-        size += 1
+        out.append(v)
         blocked |= nbr[v] | (1 << v)
-    return size
+    return out
+
+
+def greedy_mis(nbr: list[int], order: list[int] | None = None) -> int:
+    return len(greedy_mis_set(nbr, order))
 
 
 def _complement_colour_ub(nbr: list[int], p: int) -> int:

@@ -37,6 +37,7 @@ OWNERS = {
     "7a": {"cells": ("cert",), "families": ("decide_alpha_le",)},
     "7b": {"cells": ("R(4,t)",), "families": ("yu_pool",)},
     "7c": {"cells": ("R(4,t)",), "families": ("yu_pool",)},
+    "7c1": {"cells": ("R(4,t)",), "families": ("yu_pool",)},
     "7d": {"cells": ("R(3,k)",), "families": ("circulant_r3",)},
     "7e": {"cells": ("R(4,t)",), "families": ("block_circulant",)},
     "7f": {"cells": ("R(4,t)-geom",), "families": ("polarity_gq",)},

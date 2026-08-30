@@ -35,5 +35,14 @@ if [[ -f "${ROOT}/data/phase7.log" ]]; then
   tail -n 15 "${ROOT}/data/phase7.log"
 fi
 if command -v tmux >/dev/null 2>&1; then
-  tmux has-session -t ramsey7 2>/dev/null && echo "tmux ramsey7: live" || echo "tmux ramsey7: none"
+  if tmux has-session -t ramsey7 2>/dev/null; then
+    echo "tmux ramsey7: live"
+  else
+    echo "tmux ramsey7: none"
+  fi
+  if tmux has-session -t ramsey7c1 2>/dev/null; then
+    echo "tmux ramsey7c1: live"
+  else
+    echo "tmux ramsey7c1: none"
+  fi
 fi

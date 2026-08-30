@@ -360,25 +360,20 @@ all:Exoo Tatarevic Ramsey circulant
 
 ## 3. One queue (if someone continues this tree)
 
-Implemented as **`phase7`** (`docs/JOB-PHASE7.md`). On the pod, after
-`git pull`: `export RAMSEY_6A_LIMIT=600` then `bash scripts/pod-phase7.sh`.
-6a is the gate; 7a–7f are Looks 3, 1, 6, 2, 4, 5 in that order.
+**7a–7f ran on the A40 (30 Aug 2026).** No `CELL?`. 7c packed fat \(S\)
+and leftover still had a 16-IS. The next search change is **`7c1`**
+(SAT-on-pool + leftover-IS cuts), not `pod-phase7.sh` and not more SAT
+seconds on \(\max\lvert S\rvert\). Guide: [`JOB-7C1.md`](JOB-7C1.md).
 
-1. Finish **6a** (CP-SAT / Cliquer on residual 186). Hygiene. Read
-   `cpsat_18.found` / `cpsat_19.unsat`. Timeout \(\neq\) proof. A 19-IS
-   is a bug until replayed.
-2. Port Yu’s **matching colour + flatten** into `native_decide` so a
-   5c accept is Yu-speed, not 63 s × many.
-3. Hunt **only** pools with `min_resid ≤ width`, \(t\) chosen from
-   DS1+Yu (21 is already 252; 23–25 if 20 is saturated at 251).
-   Prefer SAT/IP on the Yu pool (Look 6) over another 64 random walks.
-4. If 1-circulant saturates: **2-polycirculant** with the same referee
-   (Look 4). Steal Wesley / Lidický encodings. Do not Hoffman-score.
-5. \(R(3,t)\) \(t\ge 50\) with Coniglio’s IP or their seed + our
-   referee; never empty mask.
-6. Polarity leftover iff leftover \(\le\) width **and** \(N+1\) beats
-   the floor.
+Implemented as **`phase7`** (`docs/JOB-PHASE7.md`) for Looks 3→1→6→2→4→5.
+That wrapper is **done**. Do not re-run it.
 
-Until (1)–(2) are green, another family is a catalogue hour. The
-number that is still true is **252**. The place it can increment is a
+1. ~~Finish **6a**~~ Hygiene only. CP-SAT unsat-19 **timed out**. Timeout \(\neq\) proof. Residual is 5a/7a `c-decide`.
+2. ~~Port Yu’s **matching colour + flatten**~~ 7a: nodes \(\times 1/6\), wall clock **worse**. Residual theorem holds.
+3. Hunt **only** pools with `min_resid ≤ width` — **7c1** now, CEGIS cuts, not max \(\lvert S\rvert\).
+4. If 1-circulant saturates: **2-polycirculant** with the same referee (7e.1, \(n\ge 200\)). Not 7e’s \(m\le 61\).
+5. \(R(3,t)\) \(t\ge 50\) — 7d leftover 346–374 \(>256\). Width skip.
+6. Polarity leftover iff leftover \(\le\) width **and** \(N+1\) beats the floor. 7f: exact 84 vs 314.
+
+The number that is still true is **252**. The place it can increment is a
 **new \(S\)** plus a **finished accept**, not a new GPU kernel.

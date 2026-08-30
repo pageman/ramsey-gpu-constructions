@@ -16,6 +16,7 @@ the mixed-set flag. Timeout ≠ accept. Residual `n>256` is a skip.
 | **7a** | 3 | Referee bench: Paley(17) regression; on runpod, retime Yu 186 with colour+flatten. |
 | **7b** | 1 | Other `(i,j)` at 251, then primes with `min_resid≤256`. Open cells: \(R(4,17)\)–\(19\) at \(n=251\) (252 does **not** beat Yu); \(t=20\) only for \(n\ge 257\). |
 | **7c** | 6 | SAT maximises \(\lvert S\rvert\) inside a Yu pool, then the same residual referee. |
+| **7c1** | 6′ | **Follow-on, not in `phase7`.** Same pools; drop \(\max\lvert S\rvert\); cut on leftover IS. See [`JOB-7C1.md`](JOB-7C1.md). |
 | **7d** | 2 | \(R(3,t)\) \(t\ge 50\) only. Local scale has \(t=12\) and **skips**. |
 | **7e** | 4 | 2-polycirculant, \(n\le 256\), decision \(\alpha\), not Hoffman. |
 | **7f** | 5 | Polarity leftover + floor gate (same as 5e). |
@@ -67,3 +68,17 @@ timed out and you accept hunting on the 5a `c-decide` cert alone.
 
 Published cell remains **252** unless a `CELL?` line fired and you
 replayed the certificate.
+
+## After 7a–7f (Look 6 CEGIS)
+
+7c maximised \(\lvert S\rvert\). The leftover still had a 16-IS. The next
+search change is **`--job 7c1`**, not more SAT seconds and not `pod-phase7.sh`.
+
+Full operator guide: [`JOB-7C1.md`](JOB-7C1.md).
+
+```
+cd /workspace/ramsey-gpu-constructions
+git pull origin main
+bash scripts/pod-7c1.sh
+```
+

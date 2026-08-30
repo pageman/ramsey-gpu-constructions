@@ -9,6 +9,8 @@
 [`docs/A40-CAMPAIGN.md`](docs/A40-CAMPAIGN.md). Dumps: [`data/a40/`](data/a40/).
 Where to look next (literature + arXiv RAG, 30 Aug 2026):
 [`docs/WHERE-TO-LOOK.md`](docs/WHERE-TO-LOOK.md).
+After 7a–7f: **`--job 7c1`** leftover-IS CEGIS, not another 7c.
+Guide: [`docs/JOB-7C1.md`](docs/JOB-7C1.md).
 
 Explicit Ramsey-graph families that are **GPU-native** — adjacency is a batched tensor kernel — and that **RamseyConstructor-GNN Run001 did not generate**.
 

@@ -2,6 +2,7 @@
 
 Order: 6a gate → 7a referee bench → 7b 2-class hunt → 7c SAT-on-pool
 if walks die → 7d R(3,t) t≥50 → 7e 2-polycirculant → 7f polarity leftover.
+Standalone follow-on: 7c1 = SAT-on-pool + residual-IS CEGIS cuts (not max |S|).
 Never Hoffman. Timeout ≠ accept. Residual >256 is a skip, not a cell.
 """
 
@@ -349,6 +350,323 @@ def job_7c() -> list[dict]:
         if rec:
             rows.append(rec)
     write_status(job="7c", state="done", graphs=len(rows))
+    return rows
+
+
+def job_7c1() -> list[dict]:
+    """Look 6 CEGIS: SAT-on-pool + residual-IS cuts. Not max |S|. Not 7c again."""
+    from .cegis_pool import (
+        assignment_nogood,
+        build_triangle_free_model,
+        cut_kills_this_s,
+        extract_is_local,
+        first_triangle_support_dists,
+        is_cut_pool_lits,
+        local_is_to_zp,
+        solve_pool_model,
+        verify_is_independent,
+    )
+    from .yu_pool import restricted_process
+
+    rng = np.random.default_rng(20260830)
+
+    if HALT_PATH.exists() and os.environ.get("RAMSEY_FORCE_7") != "1":
+        print("  [7c1] HALT file — skip (set RAMSEY_FORCE_7=1 to hunt on 5a c-decide alone)", flush=True)
+        return []
+    try:
+        from ortools.sat.python import cp_model  # noqa: F401
+    except ImportError:
+        print("  [7c1] ortools missing — pip install ortools. No hunt.", flush=True)
+        write_status(job="7c1", state="blocked", reason="no_ortools")
+        return []
+
+    lim = limits()
+    tlim = float(lim["yu_mis_limit"])
+    sat_lim = float(lim.get("look6_sat", 30.0))
+    rounds = int(lim.get("look6_rounds", 4))
+    pool_wall = float(lim.get("look6_cegis", sat_lim))
+    wit_lim = float(lim.get("look6_witness", 2.0))
+    anneal = int(lim.get("look1_anneal", lim.get("yu_anneal", 8)))
+    p_lo = int(lim.get("look1_p_lo", 251))
+    p_hi = int(lim.get("look1_p_hi", 251 if scale_name() == "local" else 313))
+    print(
+        f"  [7c1] Look 6 CEGIS p∈[{p_lo},{p_hi}] rounds≤{rounds} "
+        f"pool_wall={pool_wall}s sat={sat_lim}s mis={tlim}s  "
+        f"per-round=max|S|; learning=leftover-IS-cuts (not one-shot 7c)",
+        flush=True,
+    )
+    write_status(job="7c1", state="running", p_lo=p_lo, p_hi=p_hi, rounds=rounds)
+    rows: list[dict] = []
+    n_pools = 0
+    n_cuts = 0
+    n_timeouts = 0
+    n_unsat_pools = 0
+    for spec in iter_yu_pools(p_lo, p_hi):
+        if min_residual(spec["p"], len(spec["pool"])) > 256:
+            print(
+                f"  [7c1] skip p={spec['p']} e={spec['e']} D{spec['i']}∪D{spec['j']} "
+                f"min_resid={min_residual(spec['p'], len(spec['pool']))}>256",
+                flush=True,
+            )
+            continue
+        open_t = r4_cells_open(spec["p"])
+        if not open_t:
+            print(f"  [7c1] skip p={spec['p']} no open R(4,t) cell", flush=True)
+            continue
+        n_pools += 1
+        if scale_name() == "local" and n_pools > 2:
+            print("  [7c1] local cap: 2 pools — stop", flush=True)
+            n_pools -= 1
+            break
+        p = int(spec["p"])
+        print(
+            f"  [7c1] pool #{n_pools} p={p} e={spec['e']} D{spec['i']}∪D{spec['j']} "
+            f"pool={len(spec['pool'])} open_t={open_t} min_resid={min_residual(p, len(spec['pool']))}",
+            flush=True,
+        )
+        model, xs, idx, pool = build_triangle_free_model(spec)
+        t_pool = time.perf_counter()
+        pool_done = "rounds"
+        for rnd in range(1, rounds + 1):
+            left = pool_wall - (time.perf_counter() - t_pool)
+            if left <= 0.05:
+                print(f"    [7c1] round {rnd}/{rounds} pool_wall exhausted ({pool_wall}s) — next pool", flush=True)
+                pool_done = "wall"
+                break
+            sat_budget = min(sat_lim, left)
+            status, S, sat_s = solve_pool_model(model, xs, pool, sat_budget, seed=20260830 + rnd)
+            print(
+                f"    [7c1] round {rnd}/{rounds} SAT {status} {sat_s:.3f}s "
+                f"(budget {sat_budget:.2f}s left {left:.2f}s)",
+                flush=True,
+            )
+            if status == "INFEASIBLE":
+                print(
+                    "    [7c1]   pool UNSAT under triangle-free + width + IS-cuts — "
+                    "every feasible S was cut. Not a cell.",
+                    flush=True,
+                )
+                n_unsat_pools += 1
+                pool_done = "unsat"
+                break
+            if S is None:
+                print(
+                    "    [7c1]   SAT UNKNOWN/timeout ≠ accept. No S, so no cut. Next pool.",
+                    flush=True,
+                )
+                n_timeouts += 1
+                pool_done = "sat_timeout"
+                break
+            if set(S) == YU_S:
+                print(
+                    f"    [7c1]   recovered Yu S |S|={len(S)} — nogood published 32-set, not a new cell",
+                    flush=True,
+                )
+                model.Add(assignment_nogood(xs, pool, idx, S))
+                continue
+            row = distances_to_row(p, S)
+            resid = p - 1 - int(row.sum())
+            print(
+                f"    [7c1]   |S|={len(S)} resid={resid} S[:12]={S[:12]}{'…' if len(S) > 12 else ''}",
+                flush=True,
+            )
+            tri_fix = 0
+            while not nbhd_triangle_free(row):
+                tri_fix += 1
+                support = first_triangle_support_dists(row) or []
+                lits = [idx[d] for d in support if d in idx]
+                print(
+                    f"    [7c1]   N(0) triangle (3-subset encoding incomplete) "
+                    f"fix={tri_fix} TRIANGLE-CUT |lits|={len(lits)} support={support[:8]}",
+                    flush=True,
+                )
+                if len(lits) >= 2:
+                    model.Add(sum(xs[i] for i in lits) <= len(lits) - 1)
+                    n_cuts += 1
+                else:
+                    model.Add(assignment_nogood(xs, pool, idx, S))
+                left = pool_wall - (time.perf_counter() - t_pool)
+                if left <= 0.05 or tri_fix >= 4:
+                    S = restricted_process(p, pool, rng)
+                    if anneal:
+                        S = anneal_pool(p, pool, S, anneal, rng, t_cell=25)
+                    row = distances_to_row(p, S)
+                    resid = p - 1 - int(row.sum())
+                    print(
+                        f"    [7c1]   triangle-repair cap — fallback process+anneal "
+                        f"|S|={len(S)} resid={resid} greedyα={greedy_alpha_row(row)} "
+                        f"tri_free={nbhd_triangle_free(row)}",
+                        flush=True,
+                    )
+                    break
+                status, S, sat_s = solve_pool_model(
+                    model, xs, pool, min(sat_lim, left), seed=20260830 + rnd + tri_fix
+                )
+                print(f"    [7c1]   re-SAT {status} {sat_s:.3f}s after triangle-cut", flush=True)
+                if status == "INFEASIBLE":
+                    n_unsat_pools += 1
+                    pool_done = "unsat"
+                    S = None
+                    break
+                if S is None:
+                    n_timeouts += 1
+                    pool_done = "sat_timeout"
+                    break
+                if set(S) == YU_S:
+                    print("    [7c1]   re-SAT hit Yu S — nogood, solve again", flush=True)
+                    model.Add(assignment_nogood(xs, pool, idx, S))
+                    status, S, sat_s = solve_pool_model(
+                        model, xs, pool, min(sat_lim, left), seed=20260830 + rnd + tri_fix + 17
+                    )
+                    if status == "INFEASIBLE" or S is None:
+                        pool_done = "unsat" if status == "INFEASIBLE" else "sat_timeout"
+                        S = None
+                        break
+                    row = distances_to_row(p, S)
+                    resid = p - 1 - int(row.sum())
+                    continue
+                row = distances_to_row(p, S)
+                resid = p - 1 - int(row.sum())
+                print(
+                    f"    [7c1]   |S|={len(S)} resid={resid} after {tri_fix} triangle-cut(s)",
+                    flush=True,
+                )
+            if pool_done in ("unsat", "sat_timeout"):
+                break
+            if S is None or not nbhd_triangle_free(row):
+                continue
+            gα = greedy_alpha_row(row)
+            t_cell = _pick_t(spec, gα)
+            print(
+                f"    [7c1]   greedyα={gα} t_cell={t_cell}",
+                flush=True,
+            )
+            if resid > 256:
+                print(f"    [7c1]   residual {resid}>256 — skip (same void as 4a). Nogood this S.", flush=True)
+                model.Add(assignment_nogood(xs, pool, idx, S))
+                continue
+            if t_cell is None:
+                print(
+                    f"    [7c1]   greedyα={gα} does not open a cell at n={p} "
+                    f"(open_t={open_t}). Nogood this S.",
+                    flush=True,
+                )
+                model.Add(assignment_nogood(xs, pool, idx, S))
+                continue
+            cert = certify_row_decision(row, t_cell, tlim)
+            mis = cert.get("mis") or {}
+            print(
+                f"    [7c1]   decide {cert.get('reason')} found={mis.get('found')} "
+                f"timeout={mis.get('timed_out')} exact={cert.get('exact')} "
+                f"rejected={cert.get('rejected')} backend={mis.get('backend')} "
+                f"nodes={mis.get('nodes')} {mis.get('seconds')}",
+                flush=True,
+            )
+            if cert.get("exact") and not cert.get("rejected"):
+                rec = _emit_yu_hit(spec, S, row, cert, t_cell, "7c1")
+                if rec:
+                    rows.append(rec)
+                print(
+                    f"    [7c1]   residual ACCEPT t={t_cell} mixed logged above. "
+                    "CELL? only if mixed_ok and n+1 beats published.",
+                    flush=True,
+                )
+                pool_done = "accept"
+                break
+            if mis.get("timed_out") or cert.get("reason") == "MIS timed out":
+                print("    [7c1]   timeout ≠ accept. Nogood this S (do not cut on a missing I).", flush=True)
+                n_timeouts += 1
+                model.Add(assignment_nogood(xs, pool, idx, S))
+                continue
+            if not mis.get("found") and not cert.get("rejected"):
+                rec = _emit_yu_hit(spec, S, row, cert, t_cell, "7c1")
+                if rec:
+                    rows.append(rec)
+                pool_done = "residual_only"
+                break
+            # Referee found a residual IS. Reconstruct I, then cut.
+            nbr = residual_nbr(row)
+            target = int(t_cell) - 1
+            local = extract_is_local(nbr, target, seconds=wit_lim)
+            if not local:
+                print(
+                    f"    [7c1]   found=True but witness extract failed (target={target}, "
+                    f"wit_lim={wit_lim}s). Nogood S, no cut. Timeout≠cut.",
+                    flush=True,
+                )
+                model.Add(assignment_nogood(xs, pool, idx, S))
+                continue
+            I = local_is_to_zp(row, local)
+            ok_ind = verify_is_independent(row, I)
+            print(
+                f"    [7c1]   witness |I|={len(I)} independent={ok_ind} "
+                f"I[:16]={I[:16]}{'…' if len(I) > 16 else ''}",
+                flush=True,
+            )
+            if not ok_ind or len(I) < target:
+                print("    [7c1]   witness failed check — nogood S, no cut.", flush=True)
+                model.Add(assignment_nogood(xs, pool, idx, S))
+                continue
+            lits = is_cut_pool_lits(p, idx, I)
+            kills = cut_kills_this_s(pool, S, lits, idx) if lits else False
+            print(
+                f"    [7c1]   CUT |lits|={len(lits)} kills_this_S={kills} "
+                f"(hit I: put a vertex of I into N(0) or a difference into S)",
+                flush=True,
+            )
+            if not lits:
+                print(
+                    "    [7c1]   empty cut — pool distances cannot hit I. "
+                    "Model → unsat. Pool dead for this t. Not a cell.",
+                    flush=True,
+                )
+                model.Add(sum(xs) <= -1)
+                n_unsat_pools += 1
+                pool_done = "empty_cut"
+                break
+            model.Add(sum(xs[i] for i in lits) >= 1)
+            n_cuts += 1
+            write_status(
+                job="7c1",
+                state="running",
+                p=p,
+                round=rnd,
+                cuts=n_cuts,
+                pools=n_pools,
+            )
+        else:
+            print(f"    [7c1] rounds cap {rounds} on this pool — next pool", flush=True)
+            pool_done = "rounds"
+        print(
+            f"  [7c1] pool p={p} e={spec['e']} D{spec['i']}∪D{spec['j']} done={pool_done} "
+            f"wall={time.perf_counter() - t_pool:.2f}s cuts_so_far={n_cuts}",
+            flush=True,
+        )
+        append_record(
+            {
+                "job": "7c1",
+                "p": p,
+                "e": spec["e"],
+                "i": spec["i"],
+                "j": spec["j"],
+                "done": pool_done,
+                "cuts": n_cuts,
+            }
+        )
+    write_status(
+        job="7c1",
+        state="done",
+        graphs=len(rows),
+        pools=n_pools,
+        cuts=n_cuts,
+        timeouts=n_timeouts,
+        unsat_pools=n_unsat_pools,
+    )
+    print(
+        f"  [7c1] summary pools={n_pools} cuts={n_cuts} timeouts={n_timeouts} "
+        f"unsat_pools={n_unsat_pools} graphs={len(rows)}  published cell still 252 unless CELL?",
+        flush=True,
+    )
     return rows
 
 

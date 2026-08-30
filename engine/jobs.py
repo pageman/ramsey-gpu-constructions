@@ -834,6 +834,7 @@ def _register_phase5() -> None:
             "7a": phase7.job_7a,
             "7b": phase7.job_7b,
             "7c": phase7.job_7c,
+            "7c1": phase7.job_7c1,
             "7d": phase7.job_7d,
             "7e": phase7.job_7e,
             "7f": phase7.job_7f,

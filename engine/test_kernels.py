@@ -162,7 +162,7 @@ def test_middle_third_seed_nonempty() -> None:
 def test_phase5_jobs_registered() -> None:
     from engine.jobs import JOBS
 
-    for name in ("5a", "5b", "5c", "5d", "5e", "5f", "phase5", "6a", "7a", "7b", "7c", "7d", "7e", "7f", "phase7"):
+    for name in ("5a", "5b", "5c", "5d", "5e", "5f", "phase5", "6a", "7a", "7b", "7c", "7c1", "7d", "7e", "7f", "phase7"):
         _assert(name in JOBS, name)
 
 
@@ -175,6 +175,73 @@ def test_r4_cells_open_251() -> None:
     _assert(min_residual(337, 37) == 262, min_residual(337, 37))
     _assert(min_residual(337, 37) > 256, "4a void residual")
     _assert(min_residual(251, 50) <= 256, min_residual(251, 50))
+
+
+def test_greedy_mis_set_matches_count() -> None:
+    from engine.kernels.bitset_mcs import greedy_mis, greedy_mis_set
+
+    nbr = [0b0000, 0b1100, 0b1010, 0b0110]  # n=4 path-ish
+    s = greedy_mis_set(nbr)
+    _assert(len(s) == greedy_mis(nbr), (s, greedy_mis(nbr)))
+    blocked = 0
+    for v in s:
+        _assert((blocked >> v) & 1 == 0, f"not independent {s}")
+        blocked |= nbr[v] | (1 << v)
+
+
+def test_cegis_cut_excludes_witness_s() -> None:
+    """A residual IS found under S must produce a clause false on that S."""
+    from engine.cegis_pool import (
+        extract_is_local,
+        is_cut_pool_lits,
+        local_is_to_zp,
+        undirected_dist,
+        verify_is_independent,
+    )
+    from engine.kernels.residual import distances_to_row, residual_nbr
+    from engine.yu_pool import load_yu_witness
+
+    w = load_yu_witness()
+    p = int(w["p"])
+    S = [int(x) for x in w["S"]]
+    row = distances_to_row(p, S)
+    nbr = residual_nbr(row)
+    # Yu residual has α=18; greedy is already a large IS.
+    local = extract_is_local(nbr, target=min(8, 1 + len(nbr) // 20), seconds=2.0)
+    _assert(local is not None and len(local) >= 1, local)
+    I = local_is_to_zp(row, local)
+    _assert(verify_is_independent(row, I), I[:8])
+    pool = sorted(set(S) | {undirected_dist(p, I[0])})
+    idx = {d: i for i, d in enumerate(pool)}
+    lits = is_cut_pool_lits(p, idx, I)
+    chosen = set(S)
+    inv = {i: d for d, i in idx.items()}
+    # Yu S leaves I in the residual, so every "put vertex of I in N(0)" lit
+    # that is in the pool and in S would contradict independence of I vs 0.
+    # Pairwise differences of I are not in S. Vertex-of-I distances are not in S.
+    for i in lits:
+        _assert(inv[i] not in chosen, (inv[i], S[:8], I[:8]))
+
+
+def test_triangle_support_cut_on_fat_s() -> None:
+    from engine.cegis_pool import first_triangle_support_dists
+    from engine.kernels.residual import distances_to_row, nbhd_triangle_free
+
+    row = distances_to_row(13, [1, 2, 3, 4, 5, 6])
+    _assert(nbhd_triangle_free(row) is False, "K_13-ish N(0) must have a triangle")
+    support = first_triangle_support_dists(row)
+    _assert(support and len(support) >= 3, support)
+
+
+def test_cegis_empty_cut_when_pool_misses_i() -> None:
+    from engine.cegis_pool import is_cut_pool_lits
+
+    # I = {1,2,4} on p=11; pool has none of 1,2,3,4,5
+    lits = is_cut_pool_lits(11, {}, [1, 2, 4])
+    _assert(lits == [], lits)
+    lits2 = is_cut_pool_lits(11, {1: 0, 3: 1}, [1, 2, 4])
+    _assert(0 in lits2, lits2)  # dist(1)=1 hits vertex 1
+    _assert(1 in lits2, lits2)  # dist(2-1)=1 already; dist(4-1)=3
 
 
 def test_six_a_not_green_without_cert2() -> None:
@@ -220,6 +287,10 @@ def main() -> int:
         test_middle_third_seed_nonempty,
         test_phase5_jobs_registered,
         test_r4_cells_open_251,
+        test_greedy_mis_set_matches_count,
+        test_cegis_cut_excludes_witness_s,
+        test_triangle_support_cut_on_fat_s,
+        test_cegis_empty_cut_when_pool_misses_i,
         test_six_a_not_green_without_cert2,
         test_yu_complement_dimacs_186,
         test_fw_small,
