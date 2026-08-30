@@ -53,8 +53,8 @@ if [[ "${PACK_LINE}" != PACK_OK* ]]; then
 fi
 REMOTE_TGZ="${PACK_LINE#PACK_OK }"
 LOCAL_TGZ="${DEST}/repro-from-pod/ramsey-repro.tgz"
-mkdir -p "${DEST}/repro-from-pod" "${DEST}/phase5-from-pod" "${DEST}/a40-from-pod/keep-a40"
-mkdir -p "${HERE}/data/phase5" "${HERE}/data/a40/pod-keep"
+mkdir -p "${DEST}/repro-from-pod" "${DEST}/phase5-from-pod" "${DEST}/phase7-from-pod" "${DEST}/a40-from-pod/keep-a40"
+mkdir -p "${HERE}/data/phase5" "${HERE}/data/phase7" "${HERE}/data/a40/pod-keep"
 
 echo "Copying ${REMOTE_TGZ} to the Mac..."
 scp -o StrictHostKeyChecking=accept-new -i "${KEY}" -P "${PORT}" \
@@ -69,6 +69,10 @@ tar -C "${UNPACK}" -xzf "${LOCAL_TGZ}"
 if [[ -d "${UNPACK}/phase5" ]]; then
   cp -a "${UNPACK}/phase5/." "${DEST}/phase5-from-pod/"
   cp -a "${UNPACK}/phase5/." "${HERE}/data/phase5/"
+fi
+if [[ -d "${UNPACK}/phase7" ]]; then
+  cp -a "${UNPACK}/phase7/." "${DEST}/phase7-from-pod/"
+  cp -a "${UNPACK}/phase7/." "${HERE}/data/phase7/"
 fi
 if [[ -d "${UNPACK}/keep-a40" ]]; then
   cp -a "${UNPACK}/keep-a40/." "${DEST}/a40-from-pod/keep-a40/"

@@ -62,12 +62,17 @@ git=$(git -C "$ROOT" rev-parse --short HEAD 2>/dev/null || echo unknown)
 
 This folder is a full copy of the repo minus node_modules/.next/.git.
 
-A40 (RunPod) catalogue — if a40-from-pod/catalog.json exists it is the
-2a Hoffman sweep (~9288 graphs) plus registry lines for 3d n=13/14.
-The in-tree data/ folder is the *local-scale* catalogue (this laptop/cloud
-agent), including jobs 4a/4b/4c dry-runs.
+A40 (RunPod) campaign dumps:
+  data/a40/           jobs 2a + 4abc (committed)
+  data/phase5/        jobs 5a–5f archive
+  data/phase7/        jobs 6a–7f + 7c1 (after mac-finish-archive.sh)
+  a40-from-pod/       labelled copy of data/a40
+  phase5-from-pod/    labelled copy of data/phase5
+  phase7-from-pod/    labelled copy of data/phase7
 
-Do not Terminate the pod (volume wipe). Stop is OK after scp.
+The in-tree data/catalog.json may be a local-scale dashboard extract.
+Do not Terminate the pod (volume wipe). Stop is OK after archive.
+Published cell is still 252.
 EOF
 
 echo "Done. Open $DEST"

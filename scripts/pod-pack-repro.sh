@@ -27,7 +27,7 @@ STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 OUT="/tmp/ramsey-repro-pack"
 DEST="/workspace/ramsey-repro-${STAMP}.tgz"
 rm -rf "${OUT}"
-mkdir -p "${OUT}/phase5" "${OUT}/keep-a40" "${OUT}/binaries" "${OUT}/meta" "${OUT}/engine-src"
+mkdir -p "${OUT}/phase5" "${OUT}/phase7" "${OUT}/keep-a40" "${OUT}/binaries" "${OUT}/meta" "${OUT}/engine-src"
 
 copy_if() {
   local src="$1"
@@ -46,6 +46,15 @@ copy_if data/catalog.json "${OUT}/phase5"
 copy_if data/registry.jsonl "${OUT}/phase5"
 copy_if data/bound_ledger.json "${OUT}/phase5"
 copy_if data/ramsey_constructions.csv "${OUT}/phase5"
+
+copy_if data/phase7.log "${OUT}/phase7"
+copy_if data/phase7.status.json "${OUT}/phase7"
+copy_if data/phase7.halt "${OUT}/phase7"
+copy_if data/yu_r4_20.cert2.json "${OUT}/phase7"
+copy_if data/yu_r4_20.complement.clq "${OUT}/phase7"
+copy_if engine/phase7.py "${OUT}/engine-src"
+copy_if engine/cegis_pool.py "${OUT}/engine-src"
+copy_if engine/phase6.py "${OUT}/engine-src"
 
 if [[ -d /workspace/keep-a40 ]]; then
   cp -a /workspace/keep-a40/. "${OUT}/keep-a40/"

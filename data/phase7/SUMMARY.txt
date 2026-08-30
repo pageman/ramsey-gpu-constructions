@@ -1,0 +1,25 @@
+job=7c1
+finished=2026-08-30T (pod wall 1098.06s; session ramsey7c1 gone)
+code=98473e5
+device=cuda:NVIDIA A40
+container=3631e8666026
+
+pools=181
+cuts=13935
+timeouts=0
+unsat_pools=30
+graphs=0
+CELL=none
+
+published_cell=252
+paley17_exact=true
+yu_residual_186_no_19IS=true (c-decide, jobs 5a and 7a)
+cpsat_19=timeout (job 6a; timeout ≠ proof)
+
+7a=81.13s Paley17 exact; Yu 186 found=False timed_out=False nodes=3.52e7
+7b=400.56s graphs=228 no CELL
+7c=83.16s graphs=163 no CELL
+7d=4.77s graphs=0 width skip residual 346-374
+7e=0.61s graphs=0 never K4-free n<=122
+7f=0.37s graphs=1 R(4,22)>84 vs 314 catalogue
+7c1=1098.06s graphs=0 CEGIS cuts worked; no leftover accept

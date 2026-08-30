@@ -60,6 +60,7 @@ engine/kernels/native_decide.so
 /data/phase7.status.json
 /data/phase7.halt
 /data/phase7.log
+/data/phase7-7c1.log
 
 # cloud noise
 agent-tools/

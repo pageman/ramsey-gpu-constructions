@@ -1,0 +1,11 @@
+archived_utc=2026-08-30T12:53:00Z
+note=engine-src + DIMACS + binaries committed from the cloud session; phase7.log lands on the Mac via mac-finish-archive.sh
+code_that_ran_7c1=98473e5
+campaign=docs/PHASE7-CAMPAIGN.md
+published_cell=252
+pools=181
+cuts=13935
+timeouts=0
+unsat_pools=30
+graphs=0
+CELL=none

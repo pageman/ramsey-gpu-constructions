@@ -56,5 +56,8 @@ decision proof finished).
 - Pod SSH (changes on restart): Connect → **SSH over exposed TCP** (SCP).
 - Do not **Terminate** (volume wipe). **Stop** is OK after `scp`.
 - Old tmux `ramsey` is job 2a leftover. `ramsey4` is gone after phase4.
-- Public GitHub was at `a49da0c` (IPv6 bind) until this tree is pushed.
-  This agent cannot push to github.com; publish from the Mac (see README).
+- Public GitHub: [pageman/ramsey-gpu-constructions](https://github.com/pageman/ramsey-gpu-constructions).
+  This cloud session pushes Cursor Origin. Publish GitHub from the Mac:
+  `git fetch origin && git merge origin/main && git push github main`.
+  Later jobs (5a–7c1) are in `docs/PHASE5-CAMPAIGN.md` and
+  `docs/PHASE7-CAMPAIGN.md`.

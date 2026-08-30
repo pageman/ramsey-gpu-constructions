@@ -2,41 +2,39 @@
 
 Two copies of every run artifact:
 
-1. **Git clone** `~/ramsey-gpu-constructions` — this is what Cursor
-   Desktop opens, what Origin sees after `git push origin main`, and
-   what GitHub serves after `git push github main`.
+1. **Git clone** `~/ramsey-gpu-constructions` — Cursor Desktop, Origin
+   after `git push origin main`, GitHub after `git push github main`.
 2. **Downloads snapshot** `~/Downloads/Ramsey-GPU-Constructions/` —
-   rsync of the clone plus pod pulls. It has **no `.git`**. Do not
-   `git push` from there.
+   rsync of the clone plus labelled campaign folders. **No `.git`.**
+   Do not `git push` from there.
 
-## What “enough to replay 5a–5f” means
+Published cell is still **252**. No `CELL?` in 2a–7f or 7c1 that beats
+Radziszowski. GitHub:
+[pageman/ramsey-gpu-constructions](https://github.com/pageman/ramsey-gpu-constructions)
+(this session updates Origin; the Mac `git push github main` publishes
+that tree).
 
-You need all of:
+## What you must have to replay
 
-- git commit that ran (`07a4e8c` for the 30 Aug 2026 night)
-- `data/yu_r4_20.json` (Yu’s published \(S\))
-- `engine/kernels/native_decide.c` and the A40 `native_decide.so`
-- `data/phase5/yu_r4_20.cert.json` (the 186-vertex decision)
-- `data/phase5/phase5.log` and `phase5.status.json`
-- `data/phase5/meta/env.txt` (`uname`, `gcc -v`, `nvidia-smi -L`, limits)
-- `data/a40/` (committed 2a / 4abc dumps) and `data/a40/pod-keep/`
-  (catalogues copied aside before `git reset --hard` on the pod)
-- this file and `docs/PHASE5-CAMPAIGN.md`
+| Piece | Path | SHA / note |
+|---|---|---|
+| Code that ran 7c1 | git `98473e5` | `Add job 7c1` |
+| Code that ran 5a | `data/phase5/meta/git-head.txt` | `07a4e8c` |
+| Yu published \(S\) | `data/yu_r4_20.json` | residual 186 |
+| Residual cert (5a) | `data/phase5/yu_r4_20.cert.json` | no 19-IS, 63.17 s |
+| Decide kernel source | `engine/kernels/native_decide.c` | rebuild `.so` |
+| 2a catalogue | `data/a40/catalog-2a.json` | ~14 MB Hoffman |
+| 4a–4c dumps | `data/a40/catalog-4abc.json` | 354 is **void** |
+| Phase5 log | `data/phase5/phase5.log` | 5a–5f |
+| Phase7+7c1 log | `data/phase7/phase7.log` | after Mac script |
+| Scale knobs | `engine/scale.py` | `local` vs `runpod` |
+| 7c1 operator guide | `docs/JOB-7C1.md` | CEGIS contract |
+| Campaign write-ups | `docs/A40-CAMPAIGN.md` `docs/PHASE5-CAMPAIGN.md` `docs/PHASE7-CAMPAIGN.md` | |
 
-Replay 5a only:
+## Archive 2a–7c1 into git + Downloads (Mac, now)
 
-```
-cd /path/to/ramsey-gpu-constructions
-RAMSEY_SCALE=runpod RAMSEY_5A_LIMIT=1800 OMP_NUM_THREADS=12
-python3 -u -m engine.cli --job 5a --scale runpod
-```
-
-Expect ~63 s on an A40-class CPU tree, `alpha_certified=true`, no
-second backend unless `ortools` is installed.
-
-## Archive from the live pod (Mac only)
-
-Prompt must be `paulpajo@…MacBook-Pro`, not `root@`.
+Prompt must be `paulpajo@…MacBook-Pro`. You already scp’d the 5 MB log
+to `data/phase7-7c1.log`.
 
 ```
 cd ~/ramsey-gpu-constructions
@@ -44,56 +42,79 @@ git fetch origin
 git merge origin/main
 export RAMSEY_POD_HOST=69.30.85.91
 export RAMSEY_POD_PORT=22061
-bash scripts/mac-archive-repro.sh
+bash scripts/mac-finish-archive.sh
 ```
 
-That script copies `pod-pack-repro.sh` to the pod, builds one tarball
-(`/workspace/ramsey-repro-*.tgz`), pulls it to the Mac, and writes:
+If the pod is already **Stopped**, the script still works: it promotes
+`data/phase7-7c1.log`, rsyncs the clone, and writes
+`~/Downloads/Ramsey-GPU-Constructions/`. Connection refused is OK.
 
-| Destination | Contents |
-|---|---|
-| `data/phase5/` | log, status, cert, post-phase5 catalog/registry/ledger, `.so`, `meta/`, `SHA256SUMS` |
-| `data/a40/pod-keep/` | `/workspace/keep-a40` (2a/4a catalogues saved before reset) |
-| `~/Downloads/Ramsey-GPU-Constructions/phase5-from-pod/` | same phase5 tree |
-| `~/Downloads/Ramsey-GPU-Constructions/a40-from-pod/keep-a40/` | same keep |
-| `~/Downloads/Ramsey-GPU-Constructions/repro-from-pod/ramsey-repro.tgz` | the single blob |
-| `~/Downloads/Ramsey-GPU-Constructions/` | full rsync of the clone (via `sync-to-downloads.sh`) |
-
-Then publish (Mac clone only):
+Then publish from the **clone** (not Downloads):
 
 ```
-git add data/phase5 data/a40/pod-keep docs/PHASE5-CAMPAIGN.md docs/REPRODUCING.md
-git commit -m "Archive phase5 run and pod-keep 2a/4a catalogues."
+git add data/phase7 docs/PHASE7-CAMPAIGN.md docs/REPRODUCING.md
+git commit -m "Archive phase7 and 7c1 A40 log."
 git push github main
 git push origin main
 ```
 
 `origin` on the Mac is Cursor Origin. `github` is the public repo.
-This cloud agent can only push Origin; you push GitHub.
+
+To skip SSH entirely: `RAMSEY_SKIP_POD=1 bash scripts/mac-finish-archive.sh`
+
+## Older: pack a live pod tarball (phase5-era)
+
+```
+export RAMSEY_POD_HOST=69.30.85.91
+export RAMSEY_POD_PORT=22061
+bash scripts/mac-archive-repro.sh
+```
+
+That still builds `repro-from-pod/ramsey-repro.tgz` if the pod is up.
+
+## Replay 5a (residual 186)
+
+```
+cd ~/ramsey-gpu-constructions
+RAMSEY_SCALE=runpod RAMSEY_5A_LIMIT=1800 OMP_NUM_THREADS=12 \
+  python3 -u -m engine.cli --job 5a --scale runpod
+```
+
+Expect ~63 s, `found=false`, `timed_out=false`. Do not announce a cell.
+
+## Replay 7c1 wiring only
+
+```
+RAMSEY_FORCE_7=1 python3 -u -m engine.cli --job 7c1 --scale local
+python3 engine/test_kernels.py
+```
 
 ## Directory map
 
 ```
-~/ramsey-gpu-constructions          Cursor project / git clone
-  data/a40/                         already-committed 2a + 4abc
-  data/a40/pod-keep/                live pod copies from keep-a40
-  data/phase5/                      this night
-  docs/PHASE5-CAMPAIGN.md           what the night proved
-  docs/A40-CAMPAIGN.md              2a–4c negatives
-  docs/REPRODUCING.md               this file
+~/ramsey-gpu-constructions
+  data/a40/                 2a + 4abc dumps (committed)
+  data/a40/pod-keep/        A40 catalogues saved before phase5 reset
+  data/phase5/              5a–5f log, cert, env, SHA256
+  data/phase7/              7a–7f + 7c1 log after mac-finish-archive
+  data/yu_r4_20.json        Yu S
+  docs/PHASE7-CAMPAIGN.md   this night’s scoreboard
+  docs/JOB-7C1.md           CEGIS operator guide
 
-~/Downloads/Ramsey-GPU-Constructions
+~/Downloads/Ramsey-GPU-Constructions     no .git
   SNAPSHOT.txt
-  a40-from-pod/                     older scp layout
-  a40-from-pod/keep-a40/            2a/4a from /workspace/keep-a40
+  a40-from-pod/             copy of data/a40
   phase5-from-pod/
-  repro-from-pod/ramsey-repro.tgz
+  phase7-from-pod/
+  data/  docs/  engine/     rsync of the clone
 ```
 
 ## What not to commit
 
-- `engine/kernels/*.so` at the source path (rebuild from `.c`)
-- live scratch `data/phase5.log` at repo root (the archive copy is
-  `data/phase5/phase5.log`)
-- `~/Downloads/…` (gitignored)
+- `engine/kernels/*.so` at the source path (A40 copies may live under
+  `data/phase5/binaries/` or `data/phase7/`)
+- live scratch `data/phase7.log` at repo root (gitignored); the archive
+  copy is `data/phase7/phase7.log`
+- `data/phase7-7c1.log` (scp landing pad; gitignored after this commit)
+- `~/Downloads/…`
 - secrets / RunPod API keys

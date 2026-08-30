@@ -29,6 +29,14 @@ Machine-readable query log and paper verdicts:
 | 5a | Yu residual 186, one backend (`c-decide`) | GREEN: no 19-IS, \(2.16\times 10^8\) nodes, 63 s. Recertify, not a +1. |
 | 5c | 64 walks, \(p\in[200,400]\) | Greedy \(\alpha\) 24–40. No real `CELL?`. Cheap walks on those pools are saturated. |
 | 5f | \(TG_{d,h}\) / Yip vs Paley | Paley wins same-\(n\) Hoffman. Catalogue. |
+| 6a | CP-SAT on Yu residual 186 | \(\alpha\ge 18\) found; unsat-19 **timeout**. Timeout ≠ proof. |
+| 7a | Colour + flatten on residual 186 | No 19-IS, \(3.52\times 10^7\) nodes. Nodes \(\times\sim 1/6\) vs 5a; wall worse. |
+| 7b | Other \((i,j)\), \(p\le 400\) | 228 graphs. Residual always a 17/18-IS. Width skip \(p=353\). |
+| 7c | SAT \(\max\lvert S\rvert\) in Yu pools | 163 graphs. Greedy \(\alpha=7\)–\(14\); leftover still a 16-IS. |
+| 7d | \(R(3,50)\), \(n\sim 500\) | Leftover 346–374 \(>256\). Width skip. |
+| 7e | 2-block \(m\in\{29,41,53,61\}\) | Never \(K_4\)-free; \(n\le 122<200\). |
+| 7f | Polarity leftover + floor | Exact \(R(4,22)>84\) vs \(\ge 314\). Catalogue. |
+| **7c1** | Leftover-IS CEGIS on Yu pools | 181 pools, 13935 cuts, 0 timeouts, 30 pool-UNSAT, 0 graphs. No `CELL?`. |
 
 The number that is still true is **252**. The place it can increment is a
 **new connection set \(S\)** plus a **finished accept**, not a new GPU kernel
@@ -360,18 +368,19 @@ all:Exoo Tatarevic Ramsey circulant
 
 ## 3. One queue (if someone continues this tree)
 
-**7a–7f ran on the A40 (30 Aug 2026).** No `CELL?`. 7c packed fat \(S\)
-and leftover still had a 16-IS. The next search change is **`7c1`**
-(SAT-on-pool + leftover-IS cuts), not `pod-phase7.sh` and not more SAT
-seconds on \(\max\lvert S\rvert\). Guide: [`JOB-7C1.md`](JOB-7C1.md).
+**7a–7f and 7c1 ran on the A40 (30 Aug 2026).** No `CELL?`. 7c packed fat
+\(S\) and leftover still had a 16-IS. **7c1** (SAT-on-pool + leftover-IS
+cuts) then cut 13935 times across 181 pools and still found no cell.
+Do not rerun `pod-phase7.sh` or `--job 7c`. Guide for the finished job:
+[`JOB-7C1.md`](JOB-7C1.md). Scoreboard: [`PHASE7-CAMPAIGN.md`](PHASE7-CAMPAIGN.md).
 
 Implemented as **`phase7`** (`docs/JOB-PHASE7.md`) for Looks 3→1→6→2→4→5.
 That wrapper is **done**. Do not re-run it.
 
 1. ~~Finish **6a**~~ Hygiene only. CP-SAT unsat-19 **timed out**. Timeout \(\neq\) proof. Residual is 5a/7a `c-decide`.
 2. ~~Port Yu’s **matching colour + flatten**~~ 7a: nodes \(\times 1/6\), wall clock **worse**. Residual theorem holds.
-3. Hunt **only** pools with `min_resid ≤ width` — **7c1** now, CEGIS cuts, not max \(\lvert S\rvert\).
-4. If 1-circulant saturates: **2-polycirculant** with the same referee (7e.1, \(n\ge 200\)). Not 7e’s \(m\le 61\).
+3. ~~Hunt pools with `min_resid ≤ width` via **7c1** CEGIS~~ Done. 181 pools, 13935 cuts, 0 CELL.
+4. If 1-circulant saturates: **2-polycirculant** with the same referee (**7e.1**, \(n\ge 200\)). Not 7e’s \(m\le 61\). **This is the next search, if any.**
 5. \(R(3,t)\) \(t\ge 50\) — 7d leftover 346–374 \(>256\). Width skip.
 6. Polarity leftover iff leftover \(\le\) width **and** \(N+1\) beats the floor. 7f: exact 84 vs 314.
 
