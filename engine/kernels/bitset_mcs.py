@@ -17,6 +17,8 @@ from typing import Any
 
 _LIB = None
 _LIB_TRIED = False
+_DECIDE = None
+_DECIDE_TRIED = False
 
 
 def _load_native():
@@ -51,6 +53,57 @@ def _load_native():
         lib.mis_decide.restype = ctypes.c_int
         _LIB = lib
         return _LIB
+    except OSError:
+        return None
+
+
+def _load_decide_native():
+    """Decision-only kernel (no Russian-doll exact-α). OpenMP if gcc accepts it."""
+    global _DECIDE, _DECIDE_TRIED
+    if _DECIDE_TRIED:
+        return _DECIDE
+    _DECIDE_TRIED = True
+    here = Path(__file__).resolve().parent
+    src = here / "native_decide.c"
+    so = here / "native_decide.so"
+    if not src.exists():
+        return None
+    need = (not so.exists()) or (src.stat().st_mtime > so.stat().st_mtime)
+    if need:
+        compiled = False
+        for flags in (
+            ["gcc", "-O3", "-shared", "-fPIC", "-fopenmp", "-o", str(so), str(src)],
+            ["gcc", "-O3", "-shared", "-fPIC", "-o", str(so), str(src)],
+        ):
+            try:
+                subprocess.check_call(flags, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                compiled = True
+                backend = "c-decide-omp" if "-fopenmp" in flags else "c-decide"
+                break
+            except (OSError, subprocess.CalledProcessError):
+                continue
+        if not compiled:
+            return None
+    else:
+        backend = "c-decide-omp" if "omp" in os.environ.get("RAMSEY_DECIDE_BACKEND", "omp") else "c-decide"
+        # Prefer the label that matches how the .so was last built.
+        backend = "c-decide"
+    try:
+        lib = ctypes.CDLL(str(so))
+        lib.mis_decide_aim.argtypes = [
+            ctypes.c_int,
+            ctypes.POINTER(ctypes.c_uint64),
+            ctypes.c_int,
+            ctypes.c_double,
+            ctypes.c_int,
+            ctypes.POINTER(ctypes.c_long),
+            ctypes.POINTER(ctypes.c_int),
+            ctypes.POINTER(ctypes.c_int),
+        ]
+        lib.mis_decide_aim.restype = ctypes.c_int
+        lib._ramsey_backend = backend
+        _DECIDE = lib
+        return _DECIDE
     except OSError:
         return None
 

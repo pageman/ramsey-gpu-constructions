@@ -17,6 +17,8 @@ from engine.kernels.mcs import omega_vertex_transitive
 from engine.kernels.rowcert import certify_boolean_cayley, certify_circulant_row, paley_closed_eigs
 from engine.kernels.residual import distances_to_row, nbhd_triangle_free, residual_nbr
 from engine.kernels.bitset_mcs import greedy_mis, mis_decision
+from engine.kernels.decide_alpha import decide_alpha_le
+from engine.phase5 import _middle_third_bits
 from engine.yu_pool import certify_row_decision, load_yu_witness, undirected_classes
 from engine.kernels.sieve import quadratic_residue_row
 from engine.kernels.spectrum import fft_eigenvalues, fwht, spectral_bounds_from_eigs
@@ -133,6 +135,37 @@ def test_mis_n_over_256_is_not_a_certificate() -> None:
     _assert("256" in cert["reason"] or cert.get("rejected"), cert)
 
 
+def test_decide_alpha_skips_n_over_256() -> None:
+    complete = [((1 << 257) - 1) ^ (1 << i) for i in range(257)]
+    rec = decide_alpha_le(complete, target=19, time_limit=0.2)
+    _assert(rec["timed_out"] is True, rec)
+    _assert(rec["exact"] is False, rec)
+    _assert(rec["backend"] == "skip_n>256", rec)
+    _assert(rec["found"] is False, rec)
+
+
+def test_decide_alpha_paley17_residual() -> None:
+    row = quadratic_residue_row(17)
+    nbr = residual_nbr(row)
+    rec = decide_alpha_le(nbr, target=3, time_limit=2.0)
+    _assert(rec["found"] is False, rec)
+    _assert(rec["timed_out"] is False, rec)
+    _assert(rec["exact"] is True, rec)
+
+
+def test_middle_third_seed_nonempty() -> None:
+    bits = _middle_third_bits(501)
+    _assert(int(bits.sum()) > 0, bits.sum())
+    _assert(int(bits[0]) == 0, "distance 0 is not a seed bit")
+
+
+def test_phase5_jobs_registered() -> None:
+    from engine.jobs import JOBS
+
+    for name in ("5a", "5b", "5c", "5d", "5e", "5f", "phase5"):
+        _assert(name in JOBS, name)
+
+
 def test_fw_small() -> None:
     adj, meta = frankl_wilson(6, 2, (1,))
     _assert(adj.shape[0] == 15, "C(6,2)")
@@ -153,6 +186,10 @@ def main() -> int:
         test_paley17_residual_mis,
         test_boolean_residual_limit_skips_mcs,
         test_mis_n_over_256_is_not_a_certificate,
+        test_decide_alpha_skips_n_over_256,
+        test_decide_alpha_paley17_residual,
+        test_middle_third_seed_nonempty,
+        test_phase5_jobs_registered,
         test_fw_small,
     ]
     failed = 0

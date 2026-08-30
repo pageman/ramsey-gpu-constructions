@@ -19,7 +19,7 @@ from .kernels.residual import (
     nbhd_triangle_free,
     residual_nbr,
 )
-from .kernels.bitset_mcs import mis_decision
+from .kernels.decide_alpha import decide_alpha_le
 from .kernels.sieve import linear_sieve, primitive_root
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -178,8 +178,8 @@ def certify_row_decision(row: np.ndarray, t_cell: int, time_limit: float) -> dic
         rec["alpha_upper"] = None
         return rec
     # residual IS of size t_cell-1  ⇒  α(G) ≥ t_cell  ⇒ reject
-    mis = mis_decision(nbr, target=t_cell - 1, time_limit=time_limit)
-    rec["mis"] = {k: mis[k] for k in ("found", "lower", "exact", "nodes", "seconds", "timed_out")}
+    mis = decide_alpha_le(nbr, target=t_cell - 1, time_limit=time_limit)
+    rec["mis"] = {k: mis.get(k) for k in ("found", "lower", "exact", "nodes", "seconds", "timed_out", "backend")}
     rec["alpha_lower"] = 1 + int(mis["lower"])
     if mis["found"]:
         rec["rejected"] = True

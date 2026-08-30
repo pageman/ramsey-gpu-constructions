@@ -27,6 +27,12 @@ OWNERS = {
     "4a": {"cells": ("R(4,t)",), "families": ("yu_pool",)},
     "4b": {"cells": ("R(3,k)",), "families": ("circulant_r3",)},
     "4c": {"cells": ("R(4,t)-geom",), "families": ("polarity_gq",)},
+    "5a": {"cells": ("R(4,20)",), "families": ("yu_pool",)},
+    "5b": {"cells": ("cert",), "families": ("decide_alpha_le",)},
+    "5c": {"cells": ("R(4,t)",), "families": ("yu_pool",)},
+    "5d": {"cells": ("R(3,k)",), "families": ("circulant_r3",)},
+    "5e": {"cells": ("R(4,t)-geom",), "families": ("polarity_gq",)},
+    "5f": {"cells": ("cert",), "families": ("tg_dh", "polynomial_paley")},
 }
 
 

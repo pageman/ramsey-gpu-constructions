@@ -11,8 +11,9 @@ a **decision MIS of width 186–280**. GPU billed; jobs 2a/4a were CPU.
 **Do not start 5c/5d/5e until 5a is green.** That is the whole lesson of
 4a’s void `CELL?` lines.
 
-CLI names (when implemented): `5a` `5b` `5c` `5d` `5e` `5f`, plus
-`phase5` = 5a then halt unless 5a reports `alpha_certified`.
+CLI names: `5a` `5b` `5c` `5d` `5e` `5f`, plus `phase5` = 5a then halt
+unless 5a reports `alpha_certified`. Pod one-shot:
+`docs/POD-PHASE5.md` / `scripts/pod-phase5.sh`.
 
 ---
 

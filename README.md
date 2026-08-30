@@ -103,7 +103,7 @@ Environment (see `runpod.env.example`):
 | | `5e` | Polarity leftover only if \(N+1\) beats the floor | \(R(4,t)\)-geom |
 | | `5f` | Catalogue \(TG_{d,h}\) / Yip | cert |
 
-Jobs **5a–5f** are specified in [`docs/plan-jobs-5x.md`](docs/plan-jobs-5x.md). They are **not** CLI flags yet. Do not implement 5c–5e until 5a writes `data/yu_r4_20.cert.json` with `alpha_certified`. `phase5` = 5a then halt.
+Jobs **5a–5f** and `phase5` are CLI flags. Spec: [`docs/plan-jobs-5x.md`](docs/plan-jobs-5x.md). **Pod night (one command):** [`docs/POD-PHASE5.md`](docs/POD-PHASE5.md) — on the pod, `bash scripts/pod-phase5.sh`. `phase5` = 5a then halt unless `data/yu_r4_20.cert.json` has `alpha_certified`. Do not start a hand-rolled 5c if 5a is red.
 
 Also set `RAMSEY_SCALE=runpod`. Base image pin: `runpod/pytorch:1.0.3-cu1281-torch280-ubuntu2404`.
 
@@ -193,6 +193,8 @@ Pod data lands in `~/Downloads/Ramsey-GPU-Constructions/a40-from-pod/` (`catalog
 - `engine/cli.py` — `python3 -m engine.cli --job …`
 - `engine/jobs.py` — ownership table; writes `data/registry.jsonl` + `bound_ledger.json`
 - `docs/plan-jobs-5x.md` — **v3** post-A40 queue: jobs 5a–5f; recertify Yu residual 186 before any new hunt
+- `docs/POD-PHASE5.md` — tmux one-shot on the A40, Fermi clocks in Zulu and GMT+8
+- `scripts/pod-phase5.sh` — creates `ramsey5` and starts `phase5` inside it (run on the pod only)
 - `docs/plan-move-a-number.md` — **v2** kernel/search plan: cheap filter + exact decision \(\alpha\), never Hoffman in the loop; Yu \(S\) regression before any hunt (`data/yu_r4_20.json`)
 - `docs/paper-a40-revision.md` — revised paper vs the Kosmos Run001 PDF
 - `docs/paper/gpu-constructions-after-run001.{tex,pdf,docx,txt}` — same paper for print; LaTeX uses embedded `thebibliography` (no `.bib`). Copies also live under `Downloads/`

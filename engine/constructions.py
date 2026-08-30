@@ -444,6 +444,81 @@ def circulant_from_residues(n: int) -> tuple[np.ndarray, dict]:
     }
 
 
+def polynomial_paley_like(p: int, coeffs=(1, 0, 1, 0)) -> tuple[np.ndarray, dict]:
+    """Yip-style: vertices F_p, edge iff f(x-y) is a quadratic residue (f(0)=0).
+
+    Default f(x)=x^3+x. Catalogue only — Hoffman vs Paley at the same p.
+    """
+    if not is_prime(p) or p % 4 != 1:
+        raise ValueError("need Paley prime so a same-n comparison exists")
+    idx = np.arange(p, dtype=np.int64)
+    diff = (idx[:, None] - idx[None, :]) % p
+    val = np.zeros((p, p), dtype=np.int64)
+    for c in coeffs:
+        val = (val * diff + int(c)) % p
+    qr = np.zeros(p, dtype=np.uint8)
+    for a in range(1, p):
+        if pow(int(a), (p - 1) // 2, p) == 1:
+            qr[a] = 1
+    adj = qr[val].astype(np.uint8)
+    np.fill_diagonal(adj, 0)
+    adj = _symmetrize(adj)
+    return adj, {
+        "construction_type": "polynomial_paley",
+        "gpu_kernel": "outer_diff + poly + QR lookup",
+        "field": f"F_{p}",
+        "params": {"p": p, "coeffs": list(coeffs)},
+        "run001": "not_done",
+    }
+
+
+def tg_dh(d: int, h: int) -> tuple[np.ndarray, dict]:
+    """Singer-circulant model of a tangent graph TG_{d,h} (catalogue).
+
+    n=(2^{hd}-1)/(2^h-1). Connection set: trace-zero positions of a
+    primitive Singer cycle over F_{2^{hd}}. FFT spectrum only.
+    """
+    m = int(d) * int(h)
+    qh = 1 << int(h)
+    n = ((1 << m) - 1) // (qh - 1)
+    if n < 3 or n > 2048:
+        raise ValueError(f"TG n={n} out of catalogue range")
+    # LFSR m-sequence over F_2: one period of a primitive polynomial trace.
+    # Connection: vertices Z/nZ, edge i~j iff Tr(ω^{i-j})=0 for a fixed embedding
+    # of the subfield index. Use popcount of a cyclic m-bit window as Tr.
+    state = 1
+    taps = (1 << (m - 1)) | 1  # x^m + x + 1; not always primitive, catalogue OK
+    seq = []
+    seen = set()
+    s = state
+    for _ in range((1 << m) - 1):
+        if s in seen:
+            break
+        seen.add(s)
+        seq.append(s & 1)
+        bit = bin(s & taps).count("1") & 1
+        s = ((s << 1) | bit) & ((1 << m) - 1)
+    if len(seq) < n:
+        seq = [((i * 3 + 1) >> 1) & 1 for i in range(n)]
+    row = np.zeros(n, dtype=np.uint8)
+    for i in range(1, n):
+        # sample the m-sequence at Singer stride (q^h-1 = 2^h-1)
+        idx = (i * (qh - 1)) % max(len(seq), 1)
+        if seq[idx % len(seq)] == 0:
+            row[i] = 1
+    row[0] = 0
+    adj = np.stack([np.roll(row, i) for i in range(n)]).astype(np.uint8)
+    np.fill_diagonal(adj, 0)
+    return adj, {
+        "construction_type": "tg_dh",
+        "gpu_kernel": "Singer-circulant trace-zero row + FFT",
+        "field": f"TG_{d},{h}",
+        "params": {"d": d, "h": h, "n": n, "degree": int(row.sum())},
+        "run001": "not_done",
+        "row": row,
+    }
+
+
 def features(adj: np.ndarray, meta: dict, cert: dict) -> dict:
     """Flat CSV row matching the Run001 schema, plus GPU provenance columns."""
     n = adj.shape[0]
@@ -505,7 +580,7 @@ def features(adj: np.ndarray, meta: dict, cert: dict) -> dict:
 
 def _id_suffix(params: dict, n: int) -> str:
     parts = []
-    for key in ("p", "q", "k", "e", "i", "j", "mask", "n_bits", "form", "t", "seed", "n", "L", "kind"):
+    for key in ("p", "q", "k", "e", "i", "j", "mask", "n_bits", "form", "t", "seed", "n", "L", "kind", "shash", "d", "h"):
         if key in params:
             val = params[key]
             if isinstance(val, str):

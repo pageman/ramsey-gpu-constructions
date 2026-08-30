@@ -810,6 +810,25 @@ JOBS: dict[str, Callable[[], list[dict]]] = {
 }
 
 
+def _register_phase5() -> None:
+    from . import phase5
+
+    JOBS.update(
+        {
+            "5a": phase5.job_5a,
+            "5b": phase5.job_5b,
+            "5c": phase5.job_5c,
+            "5d": phase5.job_5d,
+            "5e": phase5.job_5e,
+            "5f": phase5.job_5f,
+            "phase5": phase5.job_phase5,
+        }
+    )
+
+
+_register_phase5()
+
+
 def run_job(name: str) -> list[dict]:
     name = name.lower().strip()
     if name not in JOBS:

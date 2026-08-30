@@ -14,7 +14,7 @@ if str(ROOT) not in sys.path:
 
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description="RunPod-ready Ramsey construction jobs")
-    p.add_argument("--job", default=os.environ.get("RAMSEY_JOB", "phase0"), help="phase0|1a…3d|4a|4b|4c")
+    p.add_argument("--job", default=os.environ.get("RAMSEY_JOB", "phase0"), help="phase0|1a…4c|5a…5f|phase5")
     p.add_argument("--scale", default=os.environ.get("RAMSEY_SCALE"), help="local|runpod")
     p.add_argument("--list", action="store_true")
     args = p.parse_args(argv)
@@ -37,8 +37,10 @@ def main(argv: list[str] | None = None) -> int:
         jobs = ["3a", "3b", "3c", "3d"]
     elif args.job in ("phase4", "all-phase4"):
         jobs = ["4a", "4b", "4c"]
+    elif args.job in ("phase5", "all-phase5"):
+        jobs = ["phase5"]
     elif args.job in ("all",):
-        jobs = ["phase0", "1a", "1b", "1c", "1d", "2a", "2c", "3a", "3b", "3c", "3d", "4a", "4b", "4c"]
+        jobs = ["phase0", "1a", "1b", "1c", "1d", "2a", "2c", "3a", "3b", "3c", "3d", "4a", "4b", "4c", "phase5"]
     for j in jobs:
         run_job(j)
     return 0
