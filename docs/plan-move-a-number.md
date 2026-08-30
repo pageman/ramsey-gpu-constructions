@@ -1,5 +1,10 @@
 # Plan v2: GPU algorithms that can actually move a number
 
+**Jobs 5a–5f and the post-A40 order of operations are in
+`docs/plan-jobs-5x.md` (plan v3).** v2 below is the algorithm rewrite
+that 4a/4b/4c implemented. v3 changes the *queue*: recertify Yu’s
+186-vertex residual before any new hunt.
+
 Supersedes the first `plan-move-a-number.md`. Same target: a **published finite
 lower bound** in Radziszowski DS1, not Erdős #78. What changed is the
 algorithm, not the ranking of families.
