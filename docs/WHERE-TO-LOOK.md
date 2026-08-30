@@ -360,6 +360,10 @@ all:Exoo Tatarevic Ramsey circulant
 
 ## 3. One queue (if someone continues this tree)
 
+Implemented as **`phase7`** (`docs/JOB-PHASE7.md`). On the pod, after
+`git pull`: `export RAMSEY_6A_LIMIT=600` then `bash scripts/pod-phase7.sh`.
+6a is the gate; 7a–7f are Looks 3, 1, 6, 2, 4, 5 in that order.
+
 1. Finish **6a** (CP-SAT / Cliquer on residual 186). Hygiene. Read
    `cpsat_18.found` / `cpsat_19.unsat`. Timeout \(\neq\) proof. A 19-IS
    is a bug until replayed.
