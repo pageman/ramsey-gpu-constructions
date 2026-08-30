@@ -4,8 +4,9 @@
 \(R(4,20)\ge 252\) is Yu’s (arXiv:2608.18169). The 4a rows on \(p=337\) and
 \(p=353\) are **false certificates** (residual \(n>256\); C MIS returned
 “no 19-IS”). Job 4c’s \(R(4,22)>84\) is exact and far below the survey
-\(\ge 314\). Write-up: [`docs/A40-CAMPAIGN.md`](docs/A40-CAMPAIGN.md).
-Dumps: [`data/a40/`](data/a40/).
+\(\ge 314\). Revised paper (Kosmos Run001 baseline):
+[`docs/paper-a40-revision.md`](docs/paper-a40-revision.md). Campaign:
+[`docs/A40-CAMPAIGN.md`](docs/A40-CAMPAIGN.md). Dumps: [`data/a40/`](data/a40/).
 
 Explicit Ramsey-graph families that are **GPU-native** — adjacency is a batched tensor kernel — and that **RamseyConstructor-GNN Run001 did not generate**.
 
@@ -184,6 +185,7 @@ Pod data lands in `~/Downloads/Ramsey-GPU-Constructions/a40-from-pod/` (`catalog
 - `engine/cli.py` — `python3 -m engine.cli --job …`
 - `engine/jobs.py` — ownership table; writes `data/registry.jsonl` + `bound_ledger.json`
 - `docs/plan-move-a-number.md` — **v2** kernel/search plan: cheap filter + exact decision \(\alpha\), never Hoffman in the loop; Yu \(S\) regression before any hunt (`data/yu_r4_20.json`)
+- `docs/paper-a40-revision.md` — revised paper vs the Kosmos Run001 PDF
 - `docs/SESSION-HANDOFF.md` — narrative/method arc and questions for a new LLM session
 - `Dockerfile` + `post_start.sh` — RunPod
 - `src/` — Next.js dashboard
