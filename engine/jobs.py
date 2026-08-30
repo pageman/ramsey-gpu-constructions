@@ -824,6 +824,9 @@ def _register_phase5() -> None:
             "phase5": phase5.job_phase5,
         }
     )
+    from . import phase6
+
+    JOBS.update({"6a": phase6.job_6a})
 
 
 _register_phase5()

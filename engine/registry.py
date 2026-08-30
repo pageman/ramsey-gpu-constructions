@@ -33,6 +33,7 @@ OWNERS = {
     "5d": {"cells": ("R(3,k)",), "families": ("circulant_r3",)},
     "5e": {"cells": ("R(4,t)-geom",), "families": ("polarity_gq",)},
     "5f": {"cells": ("cert",), "families": ("tg_dh", "polynomial_paley")},
+    "6a": {"cells": ("R(4,20)",), "families": ("yu_pool",)},
 }
 
 

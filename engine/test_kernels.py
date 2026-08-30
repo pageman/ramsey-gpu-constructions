@@ -162,8 +162,18 @@ def test_middle_third_seed_nonempty() -> None:
 def test_phase5_jobs_registered() -> None:
     from engine.jobs import JOBS
 
-    for name in ("5a", "5b", "5c", "5d", "5e", "5f", "phase5"):
+    for name in ("5a", "5b", "5c", "5d", "5e", "5f", "phase5", "6a"):
         _assert(name in JOBS, name)
+
+
+def test_yu_complement_dimacs_186() -> None:
+    from engine.phase6 import residual_from_yu, write_complement_dimacs
+
+    nbr, meta = residual_from_yu()
+    _assert(meta["residual_n"] == 186, meta)
+    rec = write_complement_dimacs(nbr)
+    _assert(rec["n"] == 186, rec)
+    _assert(rec["edges"] > 0, rec)
 
 
 def test_fw_small() -> None:
@@ -190,6 +200,7 @@ def main() -> int:
         test_decide_alpha_paley17_residual,
         test_middle_third_seed_nonempty,
         test_phase5_jobs_registered,
+        test_yu_complement_dimacs_186,
         test_fw_small,
     ]
     failed = 0
