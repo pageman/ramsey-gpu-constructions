@@ -109,7 +109,34 @@ PYTHONUNBUFFERED=1 python3 -u -m engine.cli --job 4a --scale runpod
 # detach: Ctrl-B, D
 ```
 
-You should see `[4a] Yu S regression…` within a second. 3d stays on PID 18717 until its colourings finish.
+You should see `[4a] Yu S regression…` within a second.
+
+The A40 wave (2a → 4c) is recorded in `docs/A40-CAMPAIGN.md`. **No published
+cell moved.** Job 4a `CELL?` lines for \(p=337,353\) were a residual-\(n>256\)
+false certificate (fixed on `main` after the run).
+
+## Publish to GitHub (`pageman/ramsey-gpu-constructions`)
+
+This cloud session can push Origin only. On the **Mac**, in your GitHub clone
+(the folder that already has `origin` → `github.com/pageman/ramsey-gpu-constructions`):
+
+```bash
+cd /path/to/ramsey-gpu-constructions   # the git clone, not Downloads/
+git remote add cursor https://origin.cursor.com/git/pageman/ramsey-gpu-constructions.git
+git fetch cursor
+git merge cursor/main
+# optional: keep the A40 dumps in-tree
+mkdir -p data/a40
+cp ~/Downloads/Ramsey-GPU-Constructions/a40-from-pod/catalog-2a.json data/a40/
+cp ~/Downloads/Ramsey-GPU-Constructions/a40-from-pod/catalog.json data/a40/catalog-4abc.json
+cp ~/Downloads/Ramsey-GPU-Constructions/a40-from-pod/registry.jsonl data/a40/
+cp ~/Downloads/Ramsey-GPU-Constructions/a40-from-pod/bound_ledger.json data/a40/
+git add data/a40 && git commit -m "Add A40 2a and 4a-4c run artifacts."
+git push origin main
+```
+
+If `git fetch cursor` asks for auth, open the agent page and use Download /
+the Cursor git remote shown there, then `git push origin main` as usual.
 
 ## Run the dashboard
 
