@@ -4,8 +4,9 @@
 set -euo pipefail
 
 if [[ "$(uname -s)" == "Darwin" ]]; then
-  echo "WRONG MACHINE. This script is for the RunPod container, not the Mac."
-  echo "SSH to the pod first (RunPod UI → Connect → SSH over exposed TCP)."
+  echo "WRONG MACHINE. Prompt is the Mac (MacBook-Pro). /workspace is the pod."
+  echo "From THIS laptop run:  bash scripts/mac-phase5.sh"
+  echo "Then SSH. Only after the prompt is root@… run:  bash scripts/pod-phase5.sh"
   exit 2
 fi
 

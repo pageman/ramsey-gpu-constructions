@@ -103,7 +103,24 @@ Environment (see `runpod.env.example`):
 | | `5e` | Polarity leftover only if \(N+1\) beats the floor | \(R(4,t)\)-geom |
 | | `5f` | Catalogue \(TG_{d,h}\) / Yip | cert |
 
-Jobs **5a–5f** and `phase5` are CLI flags. Spec: [`docs/plan-jobs-5x.md`](docs/plan-jobs-5x.md). **Pod night (one command):** [`docs/POD-PHASE5.md`](docs/POD-PHASE5.md) — on the pod, `bash scripts/pod-phase5.sh`. `phase5` = 5a then halt unless `data/yu_r4_20.cert.json` has `alpha_certified`. Do not start a hand-rolled 5c if 5a is red.
+Jobs **5a–5f** and `phase5` are CLI flags. Spec: [`docs/plan-jobs-5x.md`](docs/plan-jobs-5x.md). **Pod night:** [`docs/POD-PHASE5.md`](docs/POD-PHASE5.md).
+
+If the prompt is `…@…MacBook-Pro` you are on the **laptop**. `/workspace/…` does not exist here.
+
+```bash
+# on the Mac clone (already in ~/ramsey-gpu-constructions — do not cd /workspace)
+git fetch origin && git merge origin/main
+bash scripts/mac-phase5.sh
+```
+
+Only after SSH, when the prompt is `root@…`:
+
+```bash
+cd /workspace/ramsey-gpu-constructions
+bash scripts/pod-phase5.sh
+```
+
+`phase5` = 5a then halt unless `data/yu_r4_20.cert.json` has `alpha_certified`.
 
 Also set `RAMSEY_SCALE=runpod`. Base image pin: `runpod/pytorch:1.0.3-cu1281-torch280-ubuntu2404`.
 
@@ -194,6 +211,7 @@ Pod data lands in `~/Downloads/Ramsey-GPU-Constructions/a40-from-pod/` (`catalog
 - `engine/jobs.py` — ownership table; writes `data/registry.jsonl` + `bound_ledger.json`
 - `docs/plan-jobs-5x.md` — **v3** post-A40 queue: jobs 5a–5f; recertify Yu residual 186 before any new hunt
 - `docs/POD-PHASE5.md` — tmux one-shot on the A40, Fermi clocks in Zulu and GMT+8
+- `scripts/mac-phase5.sh` — safe on the laptop; prints SSH steps or syncs+starts if `RAMSEY_POD_HOST`/`PORT` are set
 - `scripts/pod-phase5.sh` — creates `ramsey5` and starts `phase5` inside it (run on the pod only)
 - `docs/plan-move-a-number.md` — **v2** kernel/search plan: cheap filter + exact decision \(\alpha\), never Hoffman in the loop; Yu \(S\) regression before any hunt (`data/yu_r4_20.json`)
 - `docs/paper-a40-revision.md` — revised paper vs the Kosmos Run001 PDF

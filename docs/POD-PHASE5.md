@@ -17,9 +17,28 @@ referee (width + timeout≠accept + mixed-set).
 
 ## 0. What “one go” means
 
-You type **one command on the pod**:
+If the shell prompt contains `MacBook-Pro` or `paulpajo@`, **stop**.
+`/workspace/ramsey-gpu-constructions` is a path **inside the RunPod
+container**. It does not exist on the laptop. `cd /workspace/…` on the
+Mac will always fail. `scripts/pod-phase5.sh` may also be missing until
+you `git fetch origin && git merge origin/main` in the Mac clone.
+
+**On the Mac** (you are already in `~/ramsey-gpu-constructions`):
 
 ```bash
+git fetch origin
+git merge origin/main
+bash scripts/mac-phase5.sh
+```
+
+That helper refuses to start the hunt. It tells you to SSH, or, if
+`RAMSEY_POD_HOST` and `RAMSEY_POD_PORT` are set, it scp’s the files and
+starts `pod-phase5.sh` **over SSH**.
+
+**On the pod** (prompt must be `root@…`):
+
+```bash
+cd /workspace/ramsey-gpu-constructions
 bash scripts/pod-phase5.sh
 ```
 
