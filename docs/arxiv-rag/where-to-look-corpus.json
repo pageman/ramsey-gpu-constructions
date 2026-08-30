@@ -1,0 +1,250 @@
+{
+  "retrieved_at": "2026-08-30",
+  "filter": "finite Radziszowski DS1 +1; residual width <= 256; not #78; not Hoffman N^{1/k}",
+  "baseline_negatives": [
+    "2a whole-class Hoffman p<=9973",
+    "3a Hoffman-scored block-circulant",
+    "3b Hoffman ILS never recovered Yu S",
+    "4a silent n>256 accept",
+    "4b/5d empty-mask R(3,t)",
+    "4c/5e polarity leftover below floor",
+    "5c greedy-dead walks p in [200,400]",
+    "5f TG/Yip catalogue Paley wins same-n"
+  ],
+  "queries": [
+    {
+      "q": "all:\"Ramsey number\" AND (circulant OR cyclotomic) AND (construction OR \"lower bound\")",
+      "n_hits": 4,
+      "note": "right aisle; Yu/Coniglio/Wesley/Lindsay-Cain/Goedgebeur"
+    },
+    {
+      "q": "all:\"Ramsey\" AND (polycirculant OR \"block-circulant\" OR \"block circulant\")",
+      "n_hits": 3,
+      "note": "Look 4"
+    },
+    {
+      "q": "ti:\"Ramsey\" AND (SAT OR \"integer programming\" OR CP-SAT) AND (lower OR construction)",
+      "n_hits": 12,
+      "note": "Look 6 generators; also small ordered/dihedral"
+    },
+    {
+      "q": "ti:\"Ramsey numbers\" AND (new OR improved OR lower) AND (2025 OR 2026)",
+      "n_hits": 12,
+      "note": "TRAP: online/hypergraph/Gallai/upper-bound dump"
+    },
+    {
+      "q": "ti:Ramsey AND (quintic OR quartic OR \"cyclotomic class\")",
+      "n_hits": 2,
+      "note": "only Yu and Lindsay-Cain"
+    },
+    {
+      "q": "all:\"Yu\" AND \"R(4,20)\"",
+      "n_hits": 1,
+      "note": "Yu only"
+    },
+    {
+      "q": "all:\"distance-space\" AND Ramsey AND circulant",
+      "n_hits": 12,
+      "note": "TRAP: IR/clustering; only 2608.18769 on-topic"
+    },
+    {
+      "q": "all:Exoo Tatarevic Ramsey circulant",
+      "n_hits": 8,
+      "note": "TRAP: 26-27 Aug 2026 unrelated IDs"
+    }
+  ],
+  "papers": [
+    {
+      "id": "2608.18169",
+      "title": "Ramsey number R(4,20) >= 252",
+      "published": "2026-08-17",
+      "look": 1,
+      "verdict": "FRONTIER",
+      "why": "Only 2026 circulant that moved R(4,20) and R(4,21). Residual 186 bitset BnB."
+    },
+    {
+      "id": "2608.18769",
+      "title": "An Integer Programming Approach to Compute Lower Bounds for Ramsey Numbers Using Circulant Graphs",
+      "published": "2026-08-19",
+      "look": 2,
+      "verdict": "FRONTIER_METHOD",
+      "why": "Owns R(3,n) 24-49 except 27. Distance-space IP. Use for t>=50; do not rerun their table."
+    },
+    {
+      "id": "2603.09172",
+      "title": "Reinforced Generation of Combinatorial Structures: Ramsey Numbers",
+      "published": "2026-03",
+      "look": 1,
+      "verdict": "SEED_NOT_NIGHT",
+      "why": "R(4,20)>=237 obsolete vs Yu. Four init families are the seed library."
+    },
+    {
+      "id": "1510.06102",
+      "title": "Improved Lower Bounds on the Classical Ramsey Numbers R(4,22) and R(4,25)",
+      "published": "2015-10-21",
+      "look": 1,
+      "verdict": "CURRENT_ANCESTOR",
+      "why": "Full quartic residues. Yu analogises this. Higher-power sweep <=500 already done."
+    },
+    {
+      "id": "2306.04007",
+      "title": "The asymptotics of r(4,t)",
+      "published": "2023-06-06",
+      "look": 5,
+      "verdict": "ASYMPTOTIC_STRUCTURE",
+      "why": "Unital K4 structure then leftover-alpha. Do not optimise C."
+    },
+    {
+      "id": "2608.21769",
+      "title": "An improved algebraic construction for Ramsey numbers",
+      "published": "2026-08-22",
+      "look": 5,
+      "verdict": "CATALOGUE",
+      "why": "Explicit R(33,t)>=t^{2.1-o(1)}. Job 5f already. Paley wins same-n."
+    },
+    {
+      "id": "2407.07285",
+      "title": "Small Ramsey numbers for books, wheels, and generalizations",
+      "published": "2024-07-10",
+      "look": 4,
+      "verdict": "FRONTIER_TWO_ORBIT",
+      "why": "Polycirculant tabu. Two orbits beat one for books/wheels."
+    },
+    {
+      "id": "2410.03625",
+      "title": "Lower Bounds for Book Ramsey Numbers",
+      "published": "2024-10-04",
+      "look": 4,
+      "verdict": "SOTA_SAT_BLOCK_CIRCULANT",
+      "why": "Wesley SAT/IP block-circulants. Encoding to steal."
+    },
+    {
+      "id": "2509.03784",
+      "title": "New bounds for some small multicolor Ramsey numbers",
+      "published": "2025-09-04",
+      "look": 4,
+      "verdict": "SOTA_SAT_CAYLEY",
+      "why": "Structured SAT colourings. Different numbers."
+    },
+    {
+      "id": "2107.04460",
+      "title": "New bounds for Ramsey numbers R(K_k-e, K_l-e)",
+      "published": "2021-07-09",
+      "look": 4,
+      "verdict": "CURRENT_ENUMERATOR",
+      "why": "No classical R(s,t) +1 inside 1-circulants. Evidence Look 4 is two orbits."
+    },
+    {
+      "id": "2512.03419",
+      "title": "Comparative algorithm performance evaluation and prediction for the maximum clique problem using instance space analysis",
+      "published": "2025-12-04",
+      "look": 3,
+      "verdict": "SOTA_ROUTING",
+      "why": "MOMC ~75%, Gurobi ~14%, CliSAT ~11%. Route; do not pick one solver."
+    },
+    {
+      "id": "2412.14198",
+      "title": "Accelerating Reductions Using Graph Neural Networks and a New Concurrent Local Search for the Maximum Weight Independent Set Problem",
+      "published": "2024-12-14",
+      "look": 3,
+      "verdict": "BLEEDING_REDUCTIONS",
+      "why": "GNN filters reduction rules. Not PPO edge-flip."
+    },
+    {
+      "id": "2412.07685",
+      "title": "Automated Discovery of Branching Rules with Optimal Complexity for the Maximum Independent Set Problem",
+      "published": "2024-12-10",
+      "look": 3,
+      "verdict": "WRONG_DEGREE",
+      "why": "O(1.044^n) on 3-regular. Residual is not 3-regular."
+    },
+    {
+      "id": "2604.16188",
+      "title": "Some results on small ordered and cyclic Ramsey numbers",
+      "published": "2026-04-17",
+      "look": 6,
+      "verdict": "SMALL_N_ENCODING",
+      "why": "Kissat ordered/cyclic. n tiny."
+    },
+    {
+      "id": "2607.06817",
+      "title": "Computation of small reflective and dihedral Ramsey numbers",
+      "published": "2026-07-07",
+      "look": 6,
+      "verdict": "SMALL_N_ENCODING",
+      "why": "Permutational Ramsey. Catalogue of symmetry."
+    },
+    {
+      "id": "2203.13476",
+      "title": "Improved Lower Bounds for Multicolour Ramsey Numbers using SAT-Solvers",
+      "published": "2022-03-25",
+      "look": 2,
+      "verdict": "TEMPLATE_SEED",
+      "why": "SAT templates that compound. Analogue of nonempty Schur seed."
+    },
+    {
+      "id": "2606.07214",
+      "title": "Book Ramsey numbers via algebraic constructions",
+      "published": "2026-06-05",
+      "look": 5,
+      "verdict": "WRONG_NUMBER",
+      "why": "New SRGs for books. Not classical R(4,t)."
+    },
+    {
+      "id": "2510.19718",
+      "title": "Improving R(3,k) in just two bites",
+      "published": "2025-10-22",
+      "look": null,
+      "verdict": "WRONG_AISLE_ASYMPTOTIC",
+      "why": "R(3,k) >= (1/2+o(1)) k^2/log k. No graph at n~250."
+    },
+    {
+      "id": "2505.13371",
+      "title": "A new lower bound for the Ramsey numbers R(3,k)",
+      "published": "2025-05-19",
+      "look": null,
+      "verdict": "WRONG_AISLE_ASYMPTOTIC",
+      "why": "1/3+o(1). Superseded constant by two-bites."
+    },
+    {
+      "id": "2507.12926",
+      "title": "An exponential improvement for Ramsey lower bounds",
+      "published": "2025-07-17",
+      "look": null,
+      "verdict": "WRONG_AISLE_ASYMPTOTIC",
+      "why": "Random sphere graph r(l, C l). No A40 adjacency."
+    },
+    {
+      "id": "2608.06531",
+      "title": "A constructive two-parameter Ramsey increment",
+      "published": "2026-08-06",
+      "look": null,
+      "verdict": "WRONG_SCALE",
+      "why": "R(12,12)>=1641 Lean 4 lift. n~1640, no residual-width story."
+    },
+    {
+      "id": "2511.04364",
+      "title": "Lower and Upper Bounds for Small Canonical and Ordered Ramsey Numbers",
+      "published": "2025-11-06",
+      "look": null,
+      "verdict": "WRONG_NUMBER",
+      "why": "Ordered/canonical. Different numbers."
+    },
+    {
+      "id": "2601.15183",
+      "title": "An update on multicolor Ramsey lower bounds",
+      "published": "2026-01",
+      "look": null,
+      "verdict": "WRONG_AISLE_ASYMPTOTIC",
+      "why": "Ma-Shen-Xie sphere graph, multicolour."
+    },
+    {
+      "id": "2608.27405",
+      "title": "Asymptotic Bounds for Online Ramsey Numbers of Stars versus Long Paths and Cycles",
+      "published": "2026-08-27",
+      "look": null,
+      "verdict": "WRONG_GAME",
+      "why": "Online Ramsey."
+    }
+  ]
+}
