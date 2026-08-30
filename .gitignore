@@ -51,10 +51,10 @@ data/adj/
 *.npy
 engine/kernels/native_mis.so
 engine/kernels/native_decide.so
-data/yu_r4_20.cert.json
-data/phase5.status.json
-data/phase5.halt
-data/phase5.log
+/data/yu_r4_20.cert.json
+/data/phase5.status.json
+/data/phase5.halt
+/data/phase5.log
 
 # cloud noise
 agent-tools/

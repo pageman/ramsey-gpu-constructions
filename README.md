@@ -184,24 +184,30 @@ For each graph we report a **certified** \(k=\max(\omega^\uparrow,\alpha^\uparro
 
 OEIS A000791: \(R(3,3)=6\), \(R(4,4)=18\), \(R(5,5)\in[43,48]\). Yu 2026: \(R(4,20)\ge 252\) via a 251-vertex quintic-cyclotomic circulant (the 3B target order).
 
-## Copy to `Downloads/Ramsey-GPU-Constructions`
+## Archive the A40 night into git + Downloads
 
-On the Mac, from the repo:
+On the **Mac** (prompt `paulpajo@…`, not `root@`). This writes Cursor/GitHub
+paths `data/phase5/` and `data/a40/pod-keep/` **and**
+`~/Downloads/Ramsey-GPU-Constructions/`. Full map: `docs/REPRODUCING.md`.
 
-```bash
-chmod +x scripts/sync-to-downloads.sh
-./scripts/sync-to-downloads.sh
 ```
-
-That writes `~/Downloads/Ramsey-GPU-Constructions/` (code, docs, local `data/`). To add the A40 files from the pod (confirm IP/port in the RunPod UI first):
-
-```bash
+cd ~/ramsey-gpu-constructions
+git fetch origin
+git merge origin/main
 export RAMSEY_POD_HOST=69.30.85.91
 export RAMSEY_POD_PORT=22061
-./scripts/sync-to-downloads.sh
+bash scripts/mac-archive-repro.sh
+git add data/phase5 data/a40/pod-keep docs/PHASE5-CAMPAIGN.md docs/REPRODUCING.md
+git commit -m "Archive phase5 run and pod-keep 2a/4a catalogues."
+git push github main
+git push origin main
 ```
 
-Pod data lands in `~/Downloads/Ramsey-GPU-Constructions/a40-from-pod/` (`catalog.json` ~15 MB, `registry.jsonl` with job 2a + 3d n=13/14).
+A lighter snapshot without contacting the pod:
+
+```
+bash scripts/sync-to-downloads.sh
+```
 
 ## Layout
 
@@ -211,8 +217,11 @@ Pod data lands in `~/Downloads/Ramsey-GPU-Constructions/a40-from-pod/` (`catalog
 - `engine/jobs.py` — ownership table; writes `data/registry.jsonl` + `bound_ledger.json`
 - `docs/plan-jobs-5x.md` — **v3** post-A40 queue: jobs 5a–5f; recertify Yu residual 186 before any new hunt
 - `docs/POD-PHASE5.md` — tmux one-shot on the A40, Fermi clocks in Zulu and GMT+8
+- `docs/PHASE5-CAMPAIGN.md` — what the 30 Aug 2026 night actually proved
+- `docs/REPRODUCING.md` — archive into git + `~/Downloads/Ramsey-GPU-Constructions/`
 - `scripts/mac-phase5.sh` — safe on the laptop; prints SSH steps or syncs+starts if `RAMSEY_POD_HOST`/`PORT` are set
 - `scripts/pod-phase5.sh` — creates `ramsey5` and starts `phase5` inside it (run on the pod only)
+- `scripts/mac-archive-repro.sh` — Mac: pack the pod, land artifacts in `data/phase5/` and Downloads
 - `docs/plan-move-a-number.md` — **v2** kernel/search plan: cheap filter + exact decision \(\alpha\), never Hoffman in the loop; Yu \(S\) regression before any hunt (`data/yu_r4_20.json`)
 - `docs/paper-a40-revision.md` — revised paper vs the Kosmos Run001 PDF
 - `docs/paper/gpu-constructions-after-run001.{tex,pdf,docx,txt}` — same paper for print; LaTeX uses embedded `thebibliography` (no `.bib`). Copies also live under `Downloads/`

@@ -1,15 +1,17 @@
 # A40 run artifacts
 
-Not committed by default (the 2a catalogue is ~14 MB). After `scp` from the
-pod they live on the Mac:
+`catalog-2a.json` (~14 MB Hoffman sweep), `catalog-4abc.json`,
+`registry.jsonl`, and `bound_ledger.json` are the campaign dumps that
+were committed after jobs 2a and 4a–4c.
+
+`pod-keep/` is filled by `scripts/mac-archive-repro.sh`. It is a copy of
+`/workspace/keep-a40` on the pod — the live catalogues saved **before**
+`git reset --hard origin/main` so phase5 could start. Treat those as
+the raw disk state of the A40 after 2a/4c, not as a second theorem.
+
+Mac Downloads mirror:
 
 ```
 ~/Downloads/Ramsey-GPU-Constructions/a40-from-pod/
-  catalog-2a.json      # job 2a Hoffman sweep
-  catalog.json         # 4a/4c tarball tree (436 KB)
-  registry.jsonl
-  bound_ledger.json
+~/Downloads/Ramsey-GPU-Constructions/a40-from-pod/keep-a40/
 ```
-
-Copy them here before `git push` if you want them on GitHub. See
-`docs/A40-CAMPAIGN.md`.
