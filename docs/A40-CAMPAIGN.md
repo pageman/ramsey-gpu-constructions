@@ -19,9 +19,8 @@ repo (\(\omega=\alpha=3\), \(R(4,4)>17\)).
 | Ledger | `bound_ledger.json` in that folder |
 | In-tree `data/catalog.json` | local / tarball scale, **not** the 2a sweep |
 
-The 14 MB 2a catalogue is **not** committed here (dashboard still reads
-the small tree). Copy the Mac files into `data/a40/` if you want them in
-git; GitHub will accept ~14 MB.
+The 14 MB 2a catalogue **is** in git under `data/a40/catalog-2a.json`.
+The dashboard still reads the small `data/catalog.json` tree.
 
 ## Jobs
 
