@@ -123,7 +123,12 @@ static void degeneracy_relabel(int n, const uint64_t *src, int *perm) {
 
 int mis_decide(int n, const uint64_t *nbr_flat, int target, double seconds,
                int greedy_lower, long *nodes_out, int *lower_out, int *timed_out) {
-    if (n <= 0 || n > MAXN) return 0;
+    if (n <= 0 || n > MAXN) {
+        if (nodes_out) *nodes_out = 0;
+        if (lower_out) *lower_out = greedy_lower;
+        if (timed_out) *timed_out = 1;
+        return 0;
+    }
     FOUND = 0;
     LOWER = greedy_lower;
     TIMED_OUT = 0;

@@ -61,7 +61,7 @@ def _strip_meta(meta: dict) -> dict:
 
 
 def _small(v) -> bool:
-    if isinstance(v, (list, tuple)) and len(v) > 32:
+    if isinstance(v, (list, tuple)) and len(v) > 128:
         return False
     if isinstance(v, np.ndarray):
         return False
@@ -629,12 +629,16 @@ def job_4a() -> list[dict]:
                 3,
                 int(c.get("alpha_lower") or 0),
                 c.get("alpha_upper"),
-                True,
+                bool(c.get("exact") and not c.get("rejected")),
                 "bitset-mis",
             )
             rows.append(emit_decision(r, meta, pack, "4a", "R(4,t)"))
             published = R4_LOWER.get(t_cell, 0)
-            if spec["p"] + 1 > published:
+            if (
+                c.get("exact")
+                and not c.get("rejected")
+                and spec["p"] + 1 > published
+            ):
                 print(
                     f"  [4a] CELL? R(4,{t_cell}) ≥ {spec['p'] + 1}  (published ≥ {published})",
                     flush=True,

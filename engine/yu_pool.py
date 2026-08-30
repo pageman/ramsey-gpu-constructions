@@ -173,6 +173,10 @@ def certify_row_decision(row: np.ndarray, t_cell: int, time_limit: float) -> dic
         rec["alpha_upper"] = greedy
         return rec
     nbr = residual_nbr(row)
+    if len(nbr) > 256:
+        rec["reason"] = f"residual {len(nbr)} > 256"
+        rec["alpha_upper"] = None
+        return rec
     # residual IS of size t_cell-1  ⇒  α(G) ≥ t_cell  ⇒ reject
     mis = mis_decision(nbr, target=t_cell - 1, time_limit=time_limit)
     rec["mis"] = {k: mis[k] for k in ("found", "lower", "exact", "nodes", "seconds", "timed_out")}

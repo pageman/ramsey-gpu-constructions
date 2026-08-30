@@ -505,7 +505,7 @@ def features(adj: np.ndarray, meta: dict, cert: dict) -> dict:
 
 def _id_suffix(params: dict, n: int) -> str:
     parts = []
-    for key in ("p", "q", "k", "e", "mask", "n_bits", "form", "t", "seed", "n", "L", "kind"):
+    for key in ("p", "q", "k", "e", "i", "j", "mask", "n_bits", "form", "t", "seed", "n", "L", "kind"):
         if key in params:
             val = params[key]
             if isinstance(val, str):

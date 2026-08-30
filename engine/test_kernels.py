@@ -17,7 +17,7 @@ from engine.kernels.mcs import omega_vertex_transitive
 from engine.kernels.rowcert import certify_boolean_cayley, certify_circulant_row, paley_closed_eigs
 from engine.kernels.residual import distances_to_row, nbhd_triangle_free, residual_nbr
 from engine.kernels.bitset_mcs import greedy_mis, mis_decision
-from engine.yu_pool import load_yu_witness, undirected_classes
+from engine.yu_pool import certify_row_decision, load_yu_witness, undirected_classes
 from engine.kernels.sieve import quadratic_residue_row
 from engine.kernels.spectrum import fft_eigenvalues, fwht, spectral_bounds_from_eigs
 
@@ -120,6 +120,19 @@ def test_boolean_residual_limit_skips_mcs() -> None:
     _assert(rec["kernel"] == "fwht", rec)
 
 
+def test_mis_n_over_256_is_not_a_certificate() -> None:
+    """C MIS is n≤256. A silent `return 0` used to look like α < target."""
+    empty = [0] * 257
+    rec = mis_decision(empty, target=19, time_limit=0.2)
+    _assert(rec["found"] is True, rec)
+
+    # Sparse circulant on 353: residual ≫ 256. Must not print as exact α≤19.
+    row = distances_to_row(353, [1, 2, 4])
+    cert = certify_row_decision(row, t_cell=20, time_limit=0.2)
+    _assert(cert["exact"] is False, cert)
+    _assert("256" in cert["reason"] or cert.get("rejected"), cert)
+
+
 def test_fw_small() -> None:
     adj, meta = frankl_wilson(6, 2, (1,))
     _assert(adj.shape[0] == 15, "C(6,2)")
@@ -139,6 +152,7 @@ def main() -> int:
         test_yu_s_is_k4_free_186_residual,
         test_paley17_residual_mis,
         test_boolean_residual_limit_skips_mcs,
+        test_mis_n_over_256_is_not_a_certificate,
         test_fw_small,
     ]
     failed = 0

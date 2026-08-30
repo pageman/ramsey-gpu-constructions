@@ -67,10 +67,12 @@ def _pack_nbr(nbr: list[int]) -> list[int]:
 
 
 def _mis_native(nbr: list[int], target: int, time_limit: float, greedy_lower: int) -> dict[str, Any] | None:
+    n = len(nbr)
+    if n > 256:
+        return None
     lib = _load_native()
     if lib is None:
         return None
-    n = len(nbr)
     flat = _pack_nbr(nbr)
     arr = (ctypes.c_uint64 * len(flat))(*flat)
     nodes = ctypes.c_long(0)
@@ -157,9 +159,9 @@ def mis_decision(
     n = len(nbr)
     t0 = time.perf_counter()
     if target <= 0:
-        return {"found": True, "lower": 0, "exact": True, "nodes": 0, "seconds": 0.0}
+        return {"found": True, "lower": 0, "exact": True, "nodes": 0, "seconds": 0.0, "backend": "trivial"}
     if n == 0:
-        return {"found": False, "lower": 0, "exact": True, "nodes": 0, "seconds": 0.0}
+        return {"found": False, "lower": 0, "exact": True, "nodes": 0, "seconds": 0.0, "backend": "trivial"}
 
     closed = _closed(nbr)
     lower = greedy_mis(nbr)
@@ -172,6 +174,16 @@ def mis_decision(
             "seconds": time.perf_counter() - t0,
             "timed_out": False,
             "backend": "greedy",
+        }
+    if n > 256:
+        return {
+            "found": False,
+            "lower": lower,
+            "exact": False,
+            "nodes": 0,
+            "seconds": time.perf_counter() - t0,
+            "timed_out": True,
+            "backend": "skip_n>256",
         }
     native = _mis_native(nbr, target, time_limit, lower)
     if native is not None:
