@@ -25,12 +25,34 @@ from .kernels.sieve import linear_sieve, primitive_root
 ROOT = Path(__file__).resolve().parents[1]
 YU_PATH = ROOT / "data" / "yu_r4_20.json"
 
-# Published finite lower bounds we must beat (Radziszowski DS1 r18 + Yu 252).
+# Highest published finite lower bounds we must beat (DS1 r18 + Yu + AlphaEvolve).
+# t=23,24 use the monotonic floor R(4,22)≥314; CELL? still says "check DS1".
 R4_LOWER = {
+    17: 200,
+    18: 209,
+    19: 219,
     20: 252,
     21: 252,
     22: 314,
+    23: 314,
+    24: 314,
+    25: 458,
 }
+
+# Coniglio owns 24–49. t=50 floor is "check DS1"; 411 is n≤410 campaign + monotonicity.
+R3_LOWER = {
+    50: 411,
+}
+
+
+def r4_cells_open(n: int) -> list[int]:
+    """t such that an n-vertex (4,t)-graph would raise the published lower bound."""
+    return [t for t, lb in sorted(R4_LOWER.items()) if n + 1 > lb]
+
+
+def min_residual(p: int, pool_size: int) -> int:
+    """Residual after taking every pool distance (undirected ⇒ degree 2|S|)."""
+    return int(p) - 1 - 2 * int(pool_size)
 
 
 def undirected_classes(p: int, e: int, g: int | None = None) -> list[list[int]]:

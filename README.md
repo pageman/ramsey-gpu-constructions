@@ -105,8 +105,11 @@ Environment (see `runpod.env.example`):
 | | `5e` | Polarity leftover only if \(N+1\) beats the floor | \(R(4,t)\)-geom |
 | | `5f` | Catalogue \(TG_{d,h}\) / Yip | cert |
 | | `6a` | Second solver on Yu residual 186 (CP-SAT / Cliquer) | cert |
+| then | `phase7` | Look 1–6 after 6a is green | \(R(4,t)\) / \(R(3,k)\) |
+| | `7a`…`7f` | Referee bench, 2-class hunt, SAT-on-pool, \(R(3,t)\ge 50\), 2-orbit, polarity floor | see [`docs/JOB-PHASE7.md`](docs/JOB-PHASE7.md) |
 
 Job **6a** is minutes, not a night (`docs/JOB-6A.md`). It does not hunt and does not move 252.
+**Phase 7** is the hunt in [`docs/WHERE-TO-LOOK.md`](docs/WHERE-TO-LOOK.md). Gate: `second_solver_agrees`. Pod: `bash scripts/pod-phase7.sh`.
 
 Jobs **5a–5f** and `phase5` are CLI flags. Spec: [`docs/plan-jobs-5x.md`](docs/plan-jobs-5x.md). **Pod night:** [`docs/POD-PHASE5.md`](docs/POD-PHASE5.md).
 
@@ -126,6 +129,16 @@ bash scripts/pod-phase5.sh
 ```
 
 `phase5` = 5a then halt unless `data/yu_r4_20.cert.json` has `alpha_certified`.
+
+`phase7` = 6a gate then Looks 1–6 (`docs/JOB-PHASE7.md`). On the pod:
+
+```bash
+cd /workspace/ramsey-gpu-constructions
+git pull origin main
+python3 -m pip install --user ortools
+export RAMSEY_6A_LIMIT=600
+bash scripts/pod-phase7.sh
+```
 
 Also set `RAMSEY_SCALE=runpod`. Base image pin: `runpod/pytorch:1.0.3-cu1281-torch280-ubuntu2404`.
 

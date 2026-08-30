@@ -43,6 +43,11 @@ LIMITS = {
         "r3_t": 12,
         "r3_steps": 40,
         "gq_clean_q": (3, 5),
+        "look1_p_lo": 251,
+        "look1_p_hi": 251,
+        "look1_walks": 4,
+        "look1_anneal": 8,
+        "look6_sat": 8.0,
     },
     "runpod": {
         "paley_max": 997,
@@ -72,6 +77,11 @@ LIMITS = {
         "r3_t": 50,
         "r3_steps": 80,
         "gq_clean_q": (7,),
+        "look1_p_lo": 251,
+        "look1_p_hi": 400,
+        "look1_walks": 48,
+        "look1_anneal": 64,
+        "look6_sat": 45.0,
     },
 }
 

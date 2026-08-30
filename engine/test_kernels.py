@@ -162,8 +162,27 @@ def test_middle_third_seed_nonempty() -> None:
 def test_phase5_jobs_registered() -> None:
     from engine.jobs import JOBS
 
-    for name in ("5a", "5b", "5c", "5d", "5e", "5f", "phase5", "6a"):
+    for name in ("5a", "5b", "5c", "5d", "5e", "5f", "phase5", "6a", "7a", "7b", "7c", "7d", "7e", "7f", "phase7"):
         _assert(name in JOBS, name)
+
+
+def test_r4_cells_open_251() -> None:
+    from engine.yu_pool import min_residual, r4_cells_open
+
+    _assert(r4_cells_open(251) == [17, 18, 19], r4_cells_open(251))
+    _assert(20 not in r4_cells_open(251), "252 does not beat Yu 252")
+    _assert(20 in r4_cells_open(257), r4_cells_open(257))
+    _assert(min_residual(337, 37) == 262, min_residual(337, 37))
+    _assert(min_residual(337, 37) > 256, "4a void residual")
+    _assert(min_residual(251, 50) <= 256, min_residual(251, 50))
+
+
+def test_six_a_not_green_without_cert2() -> None:
+    from engine.phase6 import six_a_green
+
+    # Live cert2 is gitignored; this workspace should not pretend 6a finished.
+    if not (Path(__file__).resolve().parents[1] / "data" / "yu_r4_20.cert2.json").exists():
+        _assert(six_a_green() is False, "missing cert2 must not be green")
 
 
 def test_yu_complement_dimacs_186() -> None:
@@ -200,6 +219,8 @@ def main() -> int:
         test_decide_alpha_paley17_residual,
         test_middle_third_seed_nonempty,
         test_phase5_jobs_registered,
+        test_r4_cells_open_251,
+        test_six_a_not_green_without_cert2,
         test_yu_complement_dimacs_186,
         test_fw_small,
     ]

@@ -96,6 +96,36 @@ static void rec(word *p, int size) {
         }
         if (size + popc(p) - matched < AIM) return;
     }
+    /* Clique-cover / colouring of the complement: α(G[P]) ≤ χ(¯G[P]).
+     * Yu's "matching colour bound on the complement". Helps once |P| shrinks. */
+    {
+        int col[MAXN];
+        for (int i = 0; i < N; i++) col[i] = -1;
+        int ncolors = 0;
+        for (int w = 0; w < WORDS; w++) {
+            word bits = p[w];
+            while (bits) {
+                int v = (w << 6) + __builtin_ctzll(bits);
+                bits &= bits - 1;
+                unsigned long long forbid = 0;
+                for (int i = 0; i < WORDS; i++) {
+                    word nonadj = p[i] & ~NBR[v][i];
+                    if (i == (v >> 6)) nonadj &= ~((word)1 << (v & 63));
+                    while (nonadj) {
+                        int u = (i << 6) + __builtin_ctzll(nonadj);
+                        nonadj &= nonadj - 1;
+                        int c = col[u];
+                        if (c >= 0 && c < 63) forbid |= 1ULL << (unsigned)c;
+                    }
+                }
+                int c = 0;
+                while (c < 63 && ((forbid >> c) & 1ULL)) c++;
+                col[v] = c;
+                if (c + 1 > ncolors) ncolors = c + 1;
+            }
+        }
+        if (size + ncolors < AIM) return;
+    }
 
     int best_v = -1, best_d = MAXN;
     for (int w = 0; w < WORDS; w++) {

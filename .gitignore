@@ -56,6 +56,10 @@ engine/kernels/native_decide.so
 /data/phase5.halt
 /data/phase5.log
 /data/yu_r4_20.complement.clq
+/data/yu_r4_20.cert2.json
+/data/phase7.status.json
+/data/phase7.halt
+/data/phase7.log
 
 # cloud noise
 agent-tools/

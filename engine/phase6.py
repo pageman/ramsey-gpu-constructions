@@ -16,7 +16,28 @@ from .yu_pool import load_yu_witness
 
 ROOT = Path(__file__).resolve().parents[1]
 CERT2 = ROOT / "data" / "yu_r4_20.cert2.json"
+CERT2_ARCHIVE = ROOT / "data" / "phase5" / "yu_r4_20.cert2.json"
 DIMACS = ROOT / "data" / "yu_r4_20.complement.clq"
+
+
+def load_cert2() -> dict | None:
+    for path in (CERT2, CERT2_ARCHIVE):
+        if path.exists():
+            try:
+                return json.loads(path.read_text())
+            except json.JSONDecodeError:
+                continue
+    return None
+
+
+def six_a_green() -> bool:
+    """True only if a second solver finished and reported no 19-IS."""
+    rec = load_cert2()
+    if not rec:
+        return False
+    if rec.get("cpsat_19", {}).get("found"):
+        return False
+    return bool(rec.get("second_solver_agrees") and rec.get("no_19_is"))
 
 
 def _now() -> str:
