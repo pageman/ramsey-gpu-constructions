@@ -14,7 +14,7 @@ if str(ROOT) not in sys.path:
 
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description="RunPod-ready Ramsey construction jobs")
-    p.add_argument("--job", default=os.environ.get("RAMSEY_JOB", "phase0"), help="phase0|1a…4c|5a…5f|phase5")
+    p.add_argument("--job", default=os.environ.get("RAMSEY_JOB", "phase0"), help="phase0|1a…5f|phase5|6a")
     p.add_argument("--scale", default=os.environ.get("RAMSEY_SCALE"), help="local|runpod")
     p.add_argument("--list", action="store_true")
     args = p.parse_args(argv)

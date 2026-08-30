@@ -102,6 +102,9 @@ Environment (see `runpod.env.example`):
 | | `5d` | Circulant \(R(3,t)\) \(t\ge 50\), nonempty seed | \(R(3,k)\) |
 | | `5e` | Polarity leftover only if \(N+1\) beats the floor | \(R(4,t)\)-geom |
 | | `5f` | Catalogue \(TG_{d,h}\) / Yip | cert |
+| | `6a` | Second solver on Yu residual 186 (CP-SAT / Cliquer) | cert |
+
+Job **6a** is minutes, not a night (`docs/JOB-6A.md`). It does not hunt and does not move 252.
 
 Jobs **5a–5f** and `phase5` are CLI flags. Spec: [`docs/plan-jobs-5x.md`](docs/plan-jobs-5x.md). **Pod night:** [`docs/POD-PHASE5.md`](docs/POD-PHASE5.md).
 
