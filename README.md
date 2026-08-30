@@ -186,6 +186,7 @@ Pod data lands in `~/Downloads/Ramsey-GPU-Constructions/a40-from-pod/` (`catalog
 - `engine/jobs.py` — ownership table; writes `data/registry.jsonl` + `bound_ledger.json`
 - `docs/plan-move-a-number.md` — **v2** kernel/search plan: cheap filter + exact decision \(\alpha\), never Hoffman in the loop; Yu \(S\) regression before any hunt (`data/yu_r4_20.json`)
 - `docs/paper-a40-revision.md` — revised paper vs the Kosmos Run001 PDF
+- `docs/paper/gpu-constructions-after-run001.{tex,pdf,docx,txt}` — same paper for print; LaTeX uses embedded `thebibliography` (no `.bib`). Copies also live under `Downloads/`
 - `docs/SESSION-HANDOFF.md` — narrative/method arc and questions for a new LLM session
 - `Dockerfile` + `post_start.sh` — RunPod
 - `src/` — Next.js dashboard

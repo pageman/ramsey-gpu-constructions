@@ -1,0 +1,291 @@
+Introduction
+
+The Run001 specification asked for a parametric family whose orders grow
+at least as C^(k) with C ≥ 1.01, checked against OEIS A000791, under a
+budget of about 100 GPU-hours . The prescribed mix was Paley,
+Frankl–Wilson hybrids, synthetic graphs, and a DIMACS slice. The
+prescribed learners were a Random Forest and a graph attention network.
+The prescribed constructor was PPO edge flip. Task 4 asked for a
+cyclotomic-class search. Task 5 asked for exact clique numbers, SAT, and
+Lovász ϑ in tiers.
+
+The discovery PDF and the file list from that run stop short of those
+deliverables. Hoffman bounds stand in for ϑ. There is no shipped PPO
+policy. A later missing-file note in the same report records that
+ramseyconstructions.csv was absent from the archive at analysis time.
+
+Berghaus and Wagner showed that reinforcement-learning edge flips can
+lose to random search on R(4,4) . This campaign did not train PPO.
+
+The exponential target was set aside. The specification named GPU-native
+families that the run omitted. A later criterion is whether one A40 can
+raise a published finite lower bound in Radziszowski DS1 . The nearby
+2026 construction in this size class is Yu’s R(4,20) ≥ 252 on a
+251-vertex quintic circulant .
+
+Erdős problem 78 stays open; extractor lower bounds of the form
+(logN)^(C) are outside an A40 maximum-clique budget . Problem 986 was
+settled by container methods . Those results are background. They are
+not jobs on this pod.
+
+The Kosmos baseline
+
+The four Run001 discoveries are kept as statements about surrogates.
+
+Discovery 1 is a compute-capped pipeline: exact ω and α on small N,
+Hoffman or NetworkX approximations on the rest. That labelling scheme is
+usable for a training set. It is not a certificate of R(s,t) ≥ n + 1.
+
+Discovery 2 is a sign change in how global eigenvalue features predict a
+Hoffman growth score C_(Hoff) when the family switches from Paley or
+cubic residue graphs to general Cayley graphs. That observation supports
+family-aware ranking. Job 2a later ranked every eligible cyclotomic
+class-union through p = 9973 by Hoffman and produced no survey cell.
+
+Discovery 3 is that degree-preserving edits of Paley graphs worsen
+C(α) = α^(1/α), which has a unique maximum at α = e. Simulated annealing
+left the Paley basin by raising density and destroying regularity, then
+matched an Erdős–Rényi cloud at the same density. Job 3b repeated the
+same score at circulant scale: Hoffman(G) plus Hoffman$(\overline{G})$
+never recovered Yu’s published connection set S.
+
+Discovery 4 is that Paley had the highest median C = N^(1/k_(eff)) in
+the 1 500-graph mix. On exact certificates in this repository the
+leading diagonal graph is Paley(17). As N grows and k is replaced by a
+loose spectral upper bound, N^(1/k) falls toward about 1.2. The proxy
+therefore ranks small exact graphs above large honest spectral rows.
+That ranking is a property of the KPI.
+
+Methods
+
+Instrument
+
+The code is a Python engine
+(python3 -m engine.cli –job …–scale local|runpod) and a Next.js
+catalogue on port 43123. Job ownership lives in engine/registry.py.
+Scale limits live in engine/scale.py. Circulant spectra are FFTs of the
+first row. Boolean Cayley spectra are Walsh–Hadamard transforms. Paley
+connection sets are images of x ↦ x² in O(p) time.
+
+Survey rule
+
+A graph G on n vertices with ω(G) < s and α(G) < t implies
+R(s,t) ≥ n + 1. Spectral k is a ranking key. Plan v2 required a cheap
+filter in the search loop, a decision α ≤ t − 1 in the certificate,
+Hoffman out of both, and no dense (p/2) × (p/2) residual matrix .
+
+Residual reduction
+
+For a circulant, K₄-freeness is equivalent to G[N(0)] being
+triangle-free. Vertex 0 is non-adjacent to V \ ({0}∪N(0)), so a residual
+independent set of size t − 1 gives α(G) ≥ t and rejects R(4,t). An
+accept requires a proof that no such set exists. Mixed independent sets
+that meet both N(0) and the residual are not separately bounded in this
+code. Yu’s paper uses the residual; the implementation follows that
+reduction.
+
+Yu’s published distances , stored in data/yu_r4_20.json, are
+$$\begin{aligned}
+S=\{&1,2,4,9,10,13,18,25,26,33,36,37,43,45,50,52,\\
+&65,66,71,72,74,79,86,90,93,100,103,104,107,109,119,121\}
+\end{aligned}$$
+on p = 251, e = 5, primitive root 6, pool D₀ ∪ D₂, |S| = 32, degree 64,
+residual 186, ω = 3, α = 19. The OpenMP write-up of the missing 19-set
+on that residual quotes 1.4 seconds and about 2.7 × 10⁷ nodes.
+
+Decision MIS
+
+engine/kernels/native_mis.c is Östergård MIS with n ≤ 256 and four
+uint64 words. Python bitset_mcs.mis_decision prefers the C library. A
+residual independent set of size t − 1 is a reject. Exhaustion without
+one is an accept. A timeout is not an accept.
+
+On n > 256 the C entry used to return 0 without writing timed_out. The
+ctypes flag stayed 0, so job 4a treated “no 19-set” as exact. The emit
+path also forced exact=True. After the run, n > 256 sets a timeout,
+Python skips skip_n>256, and CELL? prints only when the decision
+finished. The regression is test_mis_n_over_256_is_not_a_certificate.
+
+Job 4a
+
+For each prime p ∈ [200,400] and each e ∈ {4, 5, 8, 10} with  − 1 in the
+index-e subgroup, the job builds every 2-class undirected pool. It runs
+64 restricted processes, 64 anneal swaps that reject triangles and
+greedy α ≥ t, a multiplier lex-min, and bitset MIS on the eight
+lowest-greedy survivors. The coded floors are R(4,20) ≥ 252,
+R(4,21) ≥ 252, R(4,22) ≥ 314.
+
+Hardware
+
+The pod was one RunPod A40 48 GB (nick armed_yellow_buzzard, container
+3631e8666026). Jobs 2a and 4a were almost entirely CPU work billed as
+GPU time. Run records sit in data/a40/. The dashboard still reads the
+small local data/catalog.json.
+
+Results
+
+Local checks
+
+Kernel tests match Paley(17)’s FFT spectrum to eigvalsh and give
+vertex-transitive ω = 3. Yu’s S is K₄-free with residual 186. C MIS on
+Paley(17)’s residual distinguishes α = 2 from α = 3. An empty residual
+on 257 vertices is not logged as exact α < 19. Local jobs wrote 263
+graphs at scale=local.
+
+A40 jobs 1a–3d
+
+Paley recertify (1a) on primes p ≤ 997 added no new exact diagonal.
+Gold, Kasami, polarity, Frankl–Wilson, and Sidon rows (1b–1d) are
+certificates only. The cyclotomic class-union sweep (2a) through
+p ≤ 9973 took 99 755 seconds and stored 9 288 Hoffman rows; none is a
+survey cell. Circulant R(3,k) search (2c) wrote 46 graphs in 29 seconds
+and stayed behind Coniglio’s table for t ≤ 49 . Block-circulant ILS (3a)
+added no diagonal cell. Hoffman ILS (3b) wrote about 59 graphs and never
+recertified Yu’s S. Generalized quadrangle scale-up (3c) at q = 11, 13
+produced Hoffman scores only. ANF search (3d) emitted n = 13 (N = 8192)
+and n = 14 (N = 16384), then stalled: max_clique for n > 64 is a
+64-vertex core plus a Python colouring that has no timeout. Orders
+n = 15 and n = 16 were never written.
+
+Job 2a had no checkpoint. A laptop-sleep death at p = 5347 forced a
+restart from p = 13.
+
+Phase 4
+
+Job 4a ran 1 715 seconds and wrote six catalogue rows. The Yu gate
+passed pool membership, |S| = 32, degree 64, residual 186, and a
+triangle-free N(0). Exact α = 19 timed out. The catalogue still marks
+that row exact from the structural flag. That mark is Yu’s published
+claim, not this kernel.
+
+Job 4b ran 8.56 seconds and wrote zero graphs. Every odd n ∈ [501,521]
+kept residual  > 280 after 80 ILS steps from the empty mask.
+
+Job 4c ran 1.58 seconds. The K₄-clean leftover of W(3,7) has 84
+vertices. Greedy α was 20. C MIS found an independent set of size 21 in
+1.29 seconds and 1.43 × 10⁷ nodes. Hence R(4,22) > 84. The survey floor
+used in code is 314.
+
+Withdrawn 4a rows
+
+  graph_id          residual   logged                    status
+  ----------------- ---------- ------------------------- -----------------------
+  yu_pool_p251_…    186        α = 19 exact              Yu ; kernel timed out
+  yu_pool_p337_e4   262        α = 19 exact              withdrawn (n > 256)
+  yu_pool_p353_e8   264        α = 19 exact; CELL? 354   withdrawn (n > 256)
+
+Four registry lines for p = 353 share one graph_id. Do not quote
+R(4,20) ≥ 338 or 354. The published lower bound remains 252.
+
+Negative statements about this instrument
+
+Ranking whole cyclotomic class-unions by Hoffman for every prime
+p ≤ 9973 produced no survey cell. Exact Paley clique numbers in this
+range are already in Shearer and Exoo. The cutoff 9973 is cyclo_max.
+
+Circulant ILS scored by Hoffman(G) plus Hoffman$(\overline{G})$ has no
+gradient toward ω ≤ 3 and α ≤ 19.
+
+The n > 64 path in max_clique cannot certify a 186-vertex residual. A
+clique number on a 64-vertex core is a lower bound on ω of a different
+graph.
+
+A 256-wide bitset MIS that returns “not found” on n > 256 without a
+timeout flag will emit false exact rows if the caller treats that return
+as a proof. Width belongs in the certificate.
+
+C = N^(1/k_(eff)) ranks small exact jewels above large spectral rows. It
+is a diagnostic of the Run001 mix. It is a poor objective for DS1.
+
+GAT training, extra Paley primes, another full class-union sweep, ANF
+n = 16 scored by spectral C, and an AlphaEvolve loop on the pod do not
+address a residual of width 186–280.
+
+Discussion
+
+Run001 Task 4 asked for cyclotomic masks and shipped correlation tables.
+This repository runs the masks (job 2a) and the 2-class subsets (job
+4a). The families in the README gap table have constructors. That closes
+the omitted-family list. It does not produce C ≥ 1.01.
+
+Yu’s paper is a three-stage pipeline on one prime. The stages are a
+50-set pool, a restricted process, and a full branch-and-bound on a
+186-vertex residual . Stages one and two are in this tree. Stage three
+is still the 1.4 second OpenMP run (or Cliquer or SAT). Until that
+decision is independent and tight, a CELL? line is a defect report.
+
+Job 2a’s FFTs and job 4a’s MIS ran on CPU. Process supervision (tmux
+versus SIGHUP) consumed more wall time than any GEMM.
+
+Kosmos lost ramseyconstructions.csv. This campaign split records across
+a 14 MB 2a catalogue, a 436 KB 4abc catalogue, an append-only registry,
+a Mac Downloads tree without .git, Cursor Origin (Internal), and public
+GitHub. The withdrawn 354 bound is stated in the README because a
+catalogue row with exact=True is how a false cell leaves the pod.
+
+Claims that are out of scope
+
+Absent from this note: an infinite family with R(k,k) ≥ C^(k) and
+C ≥ 1.01; progress on Erdős problem 78; the bounds R(4,20) ≥ 338 or 354;
+an improvement of the published R(4,22) floor by job 4c; a kernel
+certificate of Yu’s α = 19. Hoffman scores, Delsarte bounds, and N^(1/k)
+are ranking keys.
+
+If the criterion is still a survey plus-one
+
+Recertify Yu’s residual with a second solver before another hunt. Either
+widen the bitset past 256 and treat timeout as incomplete, or raise |S|
+until the residual is at most 256. Prove or drop
+α(G) = 1 + α(G[N^(c)(0)]) for mixed sets. Put i, j, and a hash of S in
+graph_id. Mark Yu p = 251 exact only when alpha_certified is true. Seed
+job 4b from a middle-third sum-free set. Refresh the coded floors from
+DS1 revision 18 before choosing t at p = 353.
+
+If the public negative result is the end of the wave, stop here.
+
+Conclusion
+
+Run001 asked for an explicit exponential and delivered a surrogate
+pipeline in which Paley wins C_(Hoff) and local search leaves Paley only
+by becoming random-like. This campaign ran the omitted families, spent
+28 hours confirming that Hoffman class-unions do not move a survey cell,
+implemented Yu’s search space, and then logged R(4,20) ≥ 354 because a
+256-bit kernel was read as a 264-vertex proof.
+
+The number of published cells moved is zero. Yu’s bound is still 252.
+The exact diagonal jewel in this tree is still Paley(17). The width that
+bounded the certificate is 256.
+
+Acknowledgments
+
+Cursor assisted with drafting the manuscript, with formatting the
+.tex/.pdf/.docx/.txt export, and with providing solutioning for the
+computational parts of the paper. RunPod supplied the A40. Errors in the
+withdrawn 4a rows are the author’s responsibility.
+
+99
+
+J. Berghaus and A. Wagner. Reinforcement learning edge flips versus
+random search on R(4,4). ICLR, 2025.
+
+D. Bradač. Off-diagonal Ramsey exponents (Erdős problem 986). June 2026.
+
+S. Coniglio et al. Integer-programming circulants and updates to R(3,n)
+for n ≤ 410. August 2026.
+
+S. P. Radziszowski. Small Ramsey numbers. Electronic Journal of
+Combinatorics, Dynamic Survey DS1, revision 18, 24 April 2026.
+
+Kosmos Run001 discovery report. RamseyConstructor-GNN: explicit
+exponential lower bounds via graph neural networks. Edison Scientific
+playground 77856386-f79a-436a-84ab-0a28be7f94a9,
+https://playground.edisonscientific.com/kosmos/77856386-f79a-436a-84ab-0a28be7f94a9/outputs/report-pdf.
+
+X. Li. Extractor constructions and (logN)^(C) Ramsey lower bounds. 2023.
+
+P. Pajo and collaborators. Plan v2: GPU algorithms that can move a
+number. docs/plan-move-a-number.md in
+https://github.com/pageman/ramsey-gpu-constructions, 29 August 2026.
+
+Yu. A quintic two-class circulant with R(4,20) ≥ 252. arXiv:2608.18169,
+2026.
