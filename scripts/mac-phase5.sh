@@ -33,7 +33,7 @@ if [[ ! -f scripts/pod-phase5.sh ]]; then
   echo
   echo "  git fetch origin"
   echo "  git merge origin/main"
-  echo "  git push github main    # if that remote exists"
+  echo "  git push github main"
   echo
   echo "Then run this helper again:  bash scripts/mac-phase5.sh"
   exit 1
@@ -59,7 +59,7 @@ if [[ -z "${HOST}" || -z "${PORT}" ]]; then
   echo "OR, by hand:"
   echo
   echo "  ssh root@HOST -p PORT -i ${KEY}"
-  echo "  # now the prompt must be root@..., not paulpajo@MacBook-Pro"
+  echo "After login the prompt must say root, not paulpajo."
   echo "  cd ${REMOTE}"
   echo "  git pull origin main || true"
   echo "  bash scripts/pod-phase5.sh"
