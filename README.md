@@ -1,5 +1,12 @@
 # GPU constructions Run001 never ran
 
+**A40 result (30 Aug 2026):** jobs 2a–4c ran. **No published +1.**
+\(R(4,20)\ge 252\) is Yu’s (arXiv:2608.18169). The 4a rows on \(p=337\) and
+\(p=353\) are **false certificates** (residual \(n>256\); C MIS returned
+“no 19-IS”). Job 4c’s \(R(4,22)>84\) is exact and far below the survey
+\(\ge 314\). Write-up: [`docs/A40-CAMPAIGN.md`](docs/A40-CAMPAIGN.md).
+Dumps: [`data/a40/`](data/a40/).
+
 Explicit Ramsey-graph families that are **GPU-native** — adjacency is a batched tensor kernel — and that **RamseyConstructor-GNN Run001 did not generate**.
 
 This is not a claim that any of them prove \(R(k,k)\ge C^k\) with \(C\ge 1.01\). Paley, Frankl–Wilson, NLFSR, and these GPU families all live in the sub-exponential explicit regime. The point is the compute gap: Run001 spent its budget on CPU Paley/FW feature CSVs and never launched the kernels the original spec paid 100 GPU-hours for.
