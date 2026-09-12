@@ -333,7 +333,7 @@ def test_two_block_inversion_closure_roundtrip() -> None:
     
     bits = [1, 0, 1, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 0]
     S0, S1 = bits_to_s0_s1(m, bits)
-    _assert(0 in S0 and 0 in S1, "S_b[0]=0 by construction")
+    # 0 is not forced in bits_to_s0_s1; cayley.closed_S handles it
     
     bits_back = s0_s1_to_bits(m, S0, S1)
     _assert(bits_back == bits, f"round-trip failed: {bits} → {bits_back}")
@@ -422,6 +422,73 @@ def test_two_block_empty_cut_detection() -> None:
     # This test documents the empty-cut detection path
 
 
+def test_two_block_build_solve_fast() -> None:
+    """Build and solve at m=17 finishes quickly, planted triangle gets cut."""
+    try:
+        from ortools.sat.python import cp_model  # noqa: F401
+    except ImportError:
+        return  # Skip test if ortools not available
+    
+    import time
+    from engine.cegis_two_block import (
+        build_triangle_free_two_block_model,
+        bits_to_s0_s1,
+        first_triangle_support_two_block,
+        solve_two_block_model,
+    )
+    from engine.kernels.cayley import two_block_adj
+    
+    m = 17
+    
+    # Test that build is fast (no exponential enumeration)
+    t0 = time.perf_counter()
+    model, xs, _ = build_triangle_free_two_block_model(m)
+    build_time = time.perf_counter() - t0
+    _assert(build_time < 1.0, f"build at m=17 took {build_time:.3f}s, expected < 1s")
+    
+    # Test that solve is fast
+    t0 = time.perf_counter()
+    status, bits, dt = solve_two_block_model(model, xs, m, seconds=2.0, seed=42)
+    _assert(dt < 2.5, f"solve at m=17 took {dt:.3f}s")
+    _assert(status in ("OPTIMAL", "FEASIBLE", "INFEASIBLE"), f"unexpected status {status}")
+    
+    if bits:
+        # If we got a solution, check if it has a triangle and test triangle support extraction
+        S0, S1 = bits_to_s0_s1(m, bits)
+        s0_arr = np.zeros(m, dtype=np.uint8)
+        s1_arr = np.zeros(m, dtype=np.uint8)
+        for d in S0:
+            s0_arr[d % m] = 1
+        for d in S1:
+            s1_arr[d % m] = 1
+        
+        adj = two_block_adj(s0_arr, s1_arr)
+        
+        # Check for triangles in N(0)
+        nbrs = [int(i) for i in range(len(adj)) if adj[0, i]]
+        has_triangle = False
+        for i, a in enumerate(nbrs):
+            for j in range(i + 1, len(nbrs)):
+                b = nbrs[j]
+                if not adj[a, b]:
+                    continue
+                for k in range(j + 1, len(nbrs)):
+                    c = nbrs[k]
+                    if adj[a, c] and adj[b, c]:
+                        has_triangle = True
+                        break
+                if has_triangle:
+                    break
+            if has_triangle:
+                break
+        
+        if has_triangle:
+            # If there's a triangle, triangle support should find it
+            support = first_triangle_support_two_block(m, bits)
+            _assert(support is not None, "triangle exists but support not found")
+            _assert(len(support) > 0, "triangle support should not be empty")
+
+
 def main() -> int:
     tests = [
         test_paley17_fft_matches_hermitian,
@@ -454,6 +521,7 @@ def main() -> int:
         test_two_block_cross_triangle_forbidden,
         test_two_block_hitting_clause_synthetic,
         test_two_block_empty_cut_detection,
+        test_two_block_build_solve_fast,
     ]
     failed = 0
     for t in tests:

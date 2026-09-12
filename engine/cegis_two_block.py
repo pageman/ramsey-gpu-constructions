@@ -30,13 +30,14 @@ def bits_to_s0_s1(m: int, bits: list[int]) -> tuple[list[int], list[int]]:
     
     bits: list of 2*free_bit_index(m) Boolean values (0/1).
     Returns: (S0, S1) where each is a list of distances in [0,m-1] with inversion.
+    Note: 0 is not forced into S0/S1 here; cayley.closed_S handles it.
     """
     free = free_bit_index(m)
     if len(bits) < 2 * free:
         raise ValueError(f"Need {2 * free} bits, got {len(bits)}")
     
-    S0 = [0] if bits else []
-    S1 = [0] if bits else []
+    S0 = []
+    S1 = []
     
     for i in range(1, free + 1):
         if bits[i - 1]:
@@ -76,12 +77,10 @@ def s0_s1_to_bits(m: int, S0: list[int], S1: list[int]) -> list[int]:
 
 
 def build_triangle_free_two_block_model(m: int) -> tuple:
-    """Build CP-SAT model forbidding neighbourhood triangles in 2-block circulant.
+    """Build CP-SAT model for two-block circulant (lazy triangle repair).
     
-    Hard constraints: no triangles in N(0), including:
-    - intra-block S0 triangles
-    - cross-block S1 triangles
-    - S1-only triangles
+    No hard triangle-free clauses up front (exponential at m=126). Use lazy CEGIS:
+    solve → check K4-free → if triangle, add cut on supporting free bits → repeat.
     
     Returns: (model, xs, m) where xs are the free-bit variables.
     """
@@ -90,62 +89,66 @@ def build_triangle_free_two_block_model(m: int) -> tuple:
     except ImportError:
         raise ImportError("ortools required for CP-SAT")
     
-    from itertools import combinations
-    from .kernels.cayley import two_block_adj
-    
     free = free_bit_index(m)
     model = cp_model.CpModel()
     xs = [model.NewBoolVar(f"bit{i}") for i in range(2 * free)]
-    
-    # Enumerate small subsets and forbid those that create neighbourhood triangles
-    # Test all combinations of free bits up to size 6 (conservative)
-    for k in range(1, min(7, 2 * free + 1)):
-        for subset_indices in combinations(range(2 * free), k):
-            test_bits = [0] * (2 * free)
-            for idx in subset_indices:
-                test_bits[idx] = 1
-            
-            S0, S1 = bits_to_s0_s1(m, test_bits)
-            if not S0 and not S1:
-                continue
-            
-            s0_arr = np.zeros(m, dtype=np.uint8)
-            s1_arr = np.zeros(m, dtype=np.uint8)
-            for d in S0:
-                s0_arr[d % m] = 1
-            for d in S1:
-                s1_arr[d % m] = 1
-            
-            adj = two_block_adj(s0_arr, s1_arr)
-            
-            # Check if neighbourhood of vertex 0 has a triangle
-            n = 2 * m
-            nbrs = [int(i) for i in range(n) if adj[0, i]]
-            has_triangle = False
-            for i, a in enumerate(nbrs):
-                for j in range(i + 1, len(nbrs)):
-                    b = nbrs[j]
-                    if not adj[a, b]:
-                        continue
-                    for k in range(j + 1, len(nbrs)):
-                        c = nbrs[k]
-                        if adj[a, c] and adj[b, c]:
-                            has_triangle = True
-                            break
-                    if has_triangle:
-                        break
-                if has_triangle:
-                    break
-            
-            if has_triangle:
-                # Forbid this subset
-                model.Add(sum(xs[idx] for idx in subset_indices) <= k - 1)
     
     # Optional: mild degree lower bound to keep leftover ≲200
     # Prefer feasibility mode (objective mode C)
     # Do NOT maximize |S0|+|S1|
     
     return model, xs, m
+
+
+def first_triangle_support_two_block(m: int, bits: list[int]) -> list[int] | None:
+    """Free-bit indices that witness one triangle in N(0), or None.
+    
+    Similar to cegis_pool.first_triangle_support_dists but for two-block free bits.
+    Returns indices into the 2*free_bit_index(m) free-bit vector.
+    """
+    S0, S1 = bits_to_s0_s1(m, bits)
+    if not S0 and not S1:
+        return None
+    
+    s0_arr = np.zeros(m, dtype=np.uint8)
+    s1_arr = np.zeros(m, dtype=np.uint8)
+    for d in S0:
+        s0_arr[d % m] = 1
+    for d in S1:
+        s1_arr[d % m] = 1
+    
+    from .kernels.cayley import two_block_adj
+    adj = two_block_adj(s0_arr, s1_arr)
+    
+    n = 2 * m
+    nbrs = [int(i) for i in range(n) if adj[0, i]]
+    
+    # Find a triangle in N(0)
+    for i, a in enumerate(nbrs):
+        for j in range(i + 1, len(nbrs)):
+            b = nbrs[j]
+            if not adj[a, b]:
+                continue
+            for k in range(j + 1, len(nbrs)):
+                c = nbrs[k]
+                if adj[a, c] and adj[b, c]:
+                    # Found triangle (a, b, c) in N(0)
+                    # Determine which free bits support this triangle
+                    support_bits: set[int] = set()
+                    
+                    # For each edge in the triangle, find the free bit(s) that enable it
+                    # Edge 0→a, 0→b, 0→c come from neighbourhood
+                    # Edge a↔b, a↔c, b↔c need to be tracked
+                    
+                    # Simple approach: any bit set in this configuration contributes
+                    # More precise: find which bits actually support these edges
+                    for idx, bit_val in enumerate(bits):
+                        if bit_val == 1:
+                            support_bits.add(idx)
+                    
+                    return sorted(support_bits) if support_bits else None
+    
+    return None
 
 
 def is_cut_two_block_lits(m: int, I: list[int]) -> list[int]:

@@ -1386,10 +1386,13 @@ def job_7e4() -> list[dict]:
             # Convert to nbr format
             nbr = _adj_nbr(adj)
             greedy_alpha = greedy_mis(nbr)
+<<<<<<< HEAD
             
             # Calculate degree and leftover for logging
             deg_0 = int(adj[0].sum())
             leftover = n - deg_0 - 1
+=======
+>>>>>>> d807510 (Fix PR #2 blockers: lazy triangle repair + drop greedy +1)
             
             print(
                 f"    [7e4]   |S0|={len(S0)} |S1|={len(S1)} deg(0)={deg_0} leftover={leftover} "
