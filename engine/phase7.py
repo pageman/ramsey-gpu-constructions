@@ -1137,6 +1137,475 @@ def job_7e1() -> list[dict]:
     return rows
 
 
+def job_7e4() -> list[dict]:
+    """Look 4: CP-SAT CEGIS on two-orbit (S0,S1) with leftover-IS cuts.
+    
+    7e.4 = CP-SAT on O(m) inversion-closed free bits of (S0,S1), hard 
+    neighbourhood-triangle-free clauses, soft search that does NOT maximize |S|, 
+    leftover/full-graph IS CEGIS capped at 20 cuts/m, referee = decide_alpha_le 
+    on full graph with target=t (prioritize t=20,21). Success = CELL? with 
+    mixed-set OK, or written pool-UNSAT / cut-saturated negative at P0 {126,128}.
+    
+    NOT --job 7c. NOT maximize |S|. NOT reopen 7c/pod-phase7.sh.
+    """
+    from .cegis_two_block import (
+        assignment_nogood,
+        bits_to_s0_s1,
+        build_triangle_free_two_block_model,
+        extract_is_full_graph,
+        first_triangle_support_two_block,
+        free_bit_index,
+        is_cut_two_block_lits,
+        solve_two_block_model,
+        verify_is_independent_full,
+    )
+    from .jobs import _decision_cert, emit_decision
+    from .kernels.cayley import two_block_adj
+    
+    rng = np.random.default_rng(20260912)
+    
+    if HALT_PATH.exists() and os.environ.get("RAMSEY_FORCE_7") != "1":
+        print("  [7e4] HALT file — skip (set RAMSEY_FORCE_7=1 to hunt on 5a c-decide alone)", flush=True)
+        return []
+    
+    try:
+        from ortools.sat.python import cp_model  # noqa: F401
+    except ImportError:
+        print("  [7e4] ortools missing — pip install ortools. No hunt.", flush=True)
+        write_status(job="7e4", state="blocked", reason="no_ortools")
+        return []
+    
+    lim = limits()
+    
+    # Environment knobs
+    if scale_name() == "local":
+        ms_default = "17,29"
+        cuts_default = 5
+        rounds_default = 4
+        sat_default = 8.0
+        pool_wall_default = 20.0
+        mis_default = 8.0
+    else:
+        ms_default = "126,128"
+        cuts_default = 20
+        rounds_default = 16
+        sat_default = 30.0
+        pool_wall_default = 90.0
+        mis_default = 25.0
+    
+    ms_str = os.environ.get("RAMSEY_7E4_M", ms_default)
+    ms = [int(x.strip()) for x in ms_str.split(",")]
+    cuts_cap = int(os.environ.get("RAMSEY_7E4_CUTS", cuts_default))
+    rounds = int(os.environ.get("RAMSEY_7E4_ROUNDS", rounds_default))
+    sat_lim = float(os.environ.get("RAMSEY_7E4_SAT", sat_default))
+    pool_wall = float(os.environ.get("RAMSEY_7E4_POOL_WALL", pool_wall_default))
+    mis_lim = float(os.environ.get("RAMSEY_7E4_MIS", mis_default))
+    warm_start = os.environ.get("RAMSEY_7E4_WARM") == "1"
+    
+    print(
+        f"  [7e4] Look 4 / R(4,20)≥252 CEGIS on two-orbit (S0,S1) m={ms} "
+        f"rounds≤{rounds} cuts_cap={cuts_cap} pool_wall={pool_wall}s sat={sat_lim}s mis={mis_lim}s  "
+        f"NOT maximize |S|; learning=leftover-IS-cuts (NOT --job 7c)",
+        flush=True,
+    )
+    write_status(job="7e4", state="running", ms=ms, rounds=rounds, cuts_cap=cuts_cap)
+    
+    rows: list[dict] = []
+    total_cuts = 0
+    total_timeouts = 0
+    total_unsat = 0
+    
+    dump_dir = ROOT / "data" / "phase7" / "7e4"
+    dump_dir.mkdir(parents=True, exist_ok=True)
+    
+    for m_idx, m in enumerate(ms):
+        n = 2 * m
+        if n > 256:
+            print(f"  [7e4] skip m={m} n={n}>256 (referee gate)", flush=True)
+            continue
+        
+        open_t = r4_cells_open(n)
+        if not open_t:
+            print(f"  [7e4] skip m={m} n={n} no open R(4,t) cell", flush=True)
+            continue
+        
+        # Prioritize t=20,21 then other open_t with n+1>R4_LOWER[t]
+        priority_t = []
+        for t in [20, 21]:
+            if t in open_t:
+                priority_t.append(t)
+        for t in open_t:
+            if t not in priority_t:
+                priority_t.append(t)
+        
+        print(
+            f"  [7e4] m={m} n={n} open_t={open_t} priority={priority_t} free_bits={2*free_bit_index(m)}",
+            flush=True,
+        )
+        
+        # Optional warm-start loading
+        warm_bits = None
+        if warm_start:
+            warm_path = ROOT / "data" / "phase7" / "7e1" / f"m{m}_best.json"
+            if warm_path.exists():
+                try:
+                    import json
+                    warm_data = json.loads(warm_path.read_text())
+                    warm_bits = warm_data.get("bits")
+                    print(f"  [7e4] loaded warm-start from {warm_path}", flush=True)
+                except Exception:
+                    pass
+        
+        model, xs, _ = build_triangle_free_two_block_model(m)
+        
+        t_pool = time.perf_counter()
+        pool_done = "rounds"
+        cut_count = 0
+        
+        for rnd in range(1, rounds + 1):
+            left = pool_wall - (time.perf_counter() - t_pool)
+            if left <= 0.05:
+                print(
+                    f"    [7e4] round {rnd}/{rounds} pool_wall exhausted ({pool_wall}s) — next m",
+                    flush=True,
+                )
+                pool_done = "wall"
+                break
+            
+            if cut_count >= cuts_cap:
+                print(
+                    f"    [7e4] round {rnd}/{rounds} cuts saturated at {cuts_cap} — next m",
+                    flush=True,
+                )
+                pool_done = "cuts_saturated"
+                break
+            
+            sat_budget = min(sat_lim, left)
+            status, bits, sat_s = solve_two_block_model(
+                model, xs, m, sat_budget, seed=20260912 + rnd + m_idx * 1000
+            )
+            
+            print(
+                f"    [7e4] round {rnd}/{rounds} SAT {status} {sat_s:.3f}s "
+                f"(budget {sat_budget:.2f}s left {left:.2f}s)",
+                flush=True,
+            )
+            
+            if status == "INFEASIBLE":
+                print(
+                    "    [7e4]   pool UNSAT under triangle-free + IS-cuts — "
+                    "every feasible (S0,S1) was cut. Not a cell.",
+                    flush=True,
+                )
+                total_unsat += 1
+                pool_done = "unsat"
+                break
+            
+            if bits is None:
+                print(
+                    "    [7e4]   SAT UNKNOWN/timeout ≠ accept. No bits, so no cut. Next m.",
+                    flush=True,
+                )
+                total_timeouts += 1
+                pool_done = "sat_timeout"
+                break
+            
+            S0, S1 = bits_to_s0_s1(m, bits)
+            
+            s0_arr = np.zeros(m, dtype=np.uint8)
+            s1_arr = np.zeros(m, dtype=np.uint8)
+            for d in S0:
+                s0_arr[d % m] = 1
+            for d in S1:
+                s1_arr[d % m] = 1
+            
+            adj = two_block_adj(s0_arr, s1_arr)
+            
+            # Triangle repair loop (lazy CEGIS)
+            tri_fix = 0
+            while not _k4_free_adj(adj):
+                tri_fix += 1
+                support = first_triangle_support_two_block(m, bits)
+                if not support or len(support) < 1:
+                    print(
+                        f"    [7e4]   N(0) triangle but no support bits found — nogood",
+                        flush=True,
+                    )
+                    model.Add(assignment_nogood(xs, m, bits))
+                    break
+                
+                print(
+                    f"    [7e4]   N(0) triangle fix={tri_fix} TRIANGLE-CUT |lits|={len(support)}",
+                    flush=True,
+                )
+                model.Add(sum(xs[i] for i in support) <= len(support) - 1)
+                total_cuts += 1
+                
+                left = pool_wall - (time.perf_counter() - t_pool)
+                if left <= 0.05 or tri_fix >= 4:
+                    print(
+                        f"    [7e4]   triangle-repair cap — nogood and continue",
+                        flush=True,
+                    )
+                    model.Add(assignment_nogood(xs, m, bits))
+                    break
+                
+                # Re-solve after triangle cut
+                status, bits, sat_s = solve_two_block_model(
+                    model, xs, m, min(sat_lim, left), seed=20260912 + rnd + m_idx * 1000 + tri_fix
+                )
+                print(f"    [7e4]   re-SAT {status} {sat_s:.3f}s after triangle-cut", flush=True)
+                
+                if status == "INFEASIBLE":
+                    total_unsat += 1
+                    pool_done = "unsat"
+                    bits = None
+                    break
+                
+                if bits is None:
+                    total_timeouts += 1
+                    pool_done = "sat_timeout"
+                    break
+                
+                # Rebuild adj for next iteration
+                S0, S1 = bits_to_s0_s1(m, bits)
+                s0_arr = np.zeros(m, dtype=np.uint8)
+                s1_arr = np.zeros(m, dtype=np.uint8)
+                for d in S0:
+                    s0_arr[d % m] = 1
+                for d in S1:
+                    s1_arr[d % m] = 1
+                adj = two_block_adj(s0_arr, s1_arr)
+            
+            if pool_done in ("unsat", "sat_timeout"):
+                break
+            
+            if bits is None or not _k4_free_adj(adj):
+                continue
+            
+            # Convert to nbr format
+            nbr = _adj_nbr(adj)
+            greedy_alpha = greedy_mis(nbr)
+            
+            # Calculate degree and leftover for logging
+            deg_0 = int(adj[0].sum())
+            leftover = n - deg_0 - 1
+            
+            # Calculate degree and leftover for logging
+            deg_0 = int(adj[0].sum())
+            leftover = n - deg_0 - 1
+            
+            print(
+                f"    [7e4]   |S0|={len(S0)} |S1|={len(S1)} deg(0)={deg_0} leftover={leftover} "
+                f"K4_free=True greedyα={greedy_alpha}",
+                flush=True,
+            )
+            
+            # All-zero check: if empty (S0,S1), treat as useless
+            if len(S0) == 0 and len(S1) == 0:
+                print(
+                    "    [7e4]   all-zero assignment (empty S0,S1) — nogood and continue",
+                    flush=True,
+                )
+                model.Add(assignment_nogood(xs, m, bits))
+                continue
+            
+            # Try decide_alpha_le for priority targets
+            found_witness = False
+            for t_cell in priority_t:
+                if greedy_alpha >= t_cell:
+                    print(
+                        f"    [7e4]   greedyα={greedy_alpha}≥{t_cell} — skip decide for t={t_cell}",
+                        flush=True,
+                    )
+                    continue
+                
+                dec = decide_alpha_le(nbr, target=t_cell, time_limit=mis_lim)
+                
+                print(
+                    f"    [7e4]   decide α≥{t_cell} found={dec['found']} timeout={dec['timed_out']} "
+                    f"exact={dec.get('exact')} backend={dec.get('backend')} nodes={dec.get('nodes')}",
+                    flush=True,
+                )
+                
+                if dec["timed_out"]:
+                    print(
+                        "    [7e4]   timeout ≠ accept. Nogood this (S0,S1) (do not cut on missing I).",
+                        flush=True,
+                    )
+                    total_timeouts += 1
+                    model.Add(assignment_nogood(xs, m, bits))
+                    found_witness = False
+                    break
+                
+                if not dec["found"] and dec.get("exact"):
+                    # Residual accept
+                    mix = mixed_set_check(adj[0], t_cell, time_limit=min(20.0, mis_lim))
+                    cell_ok = bool(dec.get("exact") and mix.get("mixed_ok"))
+                    published = R4_LOWER.get(t_cell, 0)
+                    beats = cell_ok and n + 1 > published
+                    
+                    if beats:
+                        print(
+                            f"    [7e4]   CELL? R(4,{t_cell}) ≥ {n + 1}  "
+                            f"(published ≥ {published})  mixed_ok",
+                            flush=True,
+                        )
+                    else:
+                        print(
+                            f"    [7e4]   residual_only n={n} t={t_cell}  {mix.get('reason')}",
+                            flush=True,
+                        )
+                    
+                    # Emit decision record
+                    meta = {
+                        "construction_type": "block_circulant_two_orbit",
+                        "gpu_kernel": "7e4 two-orbit CEGIS + decide α",
+                        "field": f"Z_2 × Z_{m}",
+                        "params": {
+                            "m": m,
+                            "n": n,
+                            "kind": "7e4",
+                            "t_cell": t_cell,
+                            "k4_free": True,
+                            "rounds": rnd,
+                            "cuts": cut_count,
+                            "S0": list(S0),
+                            "S1": list(S1),
+                        },
+                        "run001": "not_done",
+                    }
+                    from .certify_fast import certify_fast
+                    cert = certify_fast(adj, time_limit=0.05)
+                    pack = cert
+                    pack["exact"] = beats
+                    if not beats:
+                        pack["omega_exact"] = None
+                        pack["alpha_exact"] = None
+                    
+                    rec = emit_decision(adj[0] if adj.ndim == 2 else adj, meta, pack, "7e4", "R(4,t)")
+                    rec["exact"] = beats
+                    rows.append(rec)
+                    
+                    pool_done = "accept" if beats else "residual_only"
+                    found_witness = False
+                    break
+                
+                if dec["found"]:
+                    # Extract witness
+                    I = extract_is_full_graph(nbr, t_cell, seconds=min(2.0, left))
+                    
+                    if not I:
+                        print(
+                            f"    [7e4]   found=True but witness extract failed (target={t_cell}). "
+                            "Nogood (S0,S1), no cut. Timeout≠cut.",
+                            flush=True,
+                        )
+                        model.Add(assignment_nogood(xs, m, bits))
+                        found_witness = False
+                        break
+                    
+                    ok_ind = verify_is_independent_full(adj, I)
+                    print(
+                        f"    [7e4]   witness |I|={len(I)} independent={ok_ind} "
+                        f"I[:16]={I[:16]}{'…' if len(I) > 16 else ''}",
+                        flush=True,
+                    )
+                    
+                    if not ok_ind or len(I) < t_cell:
+                        print("    [7e4]   witness failed check — nogood (S0,S1), no cut.", flush=True)
+                        model.Add(assignment_nogood(xs, m, bits))
+                        found_witness = False
+                        break
+                    
+                    lits = is_cut_two_block_lits(m, I)
+                    
+                    if not lits:
+                        print(
+                            "    [7e4]   empty cut — free bits cannot hit I. "
+                            "Model → unsat. Pool dead for this t. Not a cell.",
+                            flush=True,
+                        )
+                        model.Add(sum(xs) <= -1)
+                        total_unsat += 1
+                        pool_done = "empty_cut"
+                        found_witness = False
+                        break
+                    
+                    print(
+                        f"    [7e4]   CUT |lits|={len(lits)} (hit I: put edge inside I)",
+                        flush=True,
+                    )
+                    model.Add(sum(xs[i] for i in lits) >= 1)
+                    cut_count += 1
+                    total_cuts += 1
+                    found_witness = True
+                    
+                    write_status(
+                        job="7e4",
+                        state="running",
+                        m=m,
+                        round=rnd,
+                        cuts=total_cuts,
+                        ms_done=m_idx,
+                    )
+                    break
+            
+            if found_witness:
+                # Continue to next round
+                continue
+            
+            if pool_done in ("accept", "residual_only", "unsat", "empty_cut", "sat_timeout"):
+                break
+        
+        print(
+            f"  [7e4] m={m} done={pool_done} wall={time.perf_counter() - t_pool:.2f}s "
+            f"cuts_this_m={cut_count} cuts_so_far={total_cuts}",
+            flush=True,
+        )
+        
+        append_record(
+            {
+                "job": "7e4",
+                "m": m,
+                "n": n,
+                "done": pool_done,
+                "cuts": cut_count,
+                "rounds": rnd if 'rnd' in locals() else 0,
+            }
+        )
+        
+        # Write summary for this m
+        summary_path = dump_dir / f"m{m}_SUMMARY.json"
+        summary = {
+            "m": m,
+            "n": n,
+            "done": pool_done,
+            "cuts": cut_count,
+            "total_cuts": total_cuts,
+            "rounds": rnd if 'rnd' in locals() else 0,
+        }
+        summary_path.write_text(json.dumps(summary, indent=2) + "\n")
+    
+    write_status(
+        job="7e4",
+        state="done",
+        graphs=len(rows),
+        ms=ms,
+        cuts=total_cuts,
+        timeouts=total_timeouts,
+        unsat_pools=total_unsat,
+    )
+    
+    print(
+        f"  [7e4] summary ms={ms} cuts={total_cuts} timeouts={total_timeouts} "
+        f"unsat_pools={total_unsat} graphs={len(rows)}  published cell still 252 unless CELL?",
+        flush=True,
+    )
+    
+    return rows
+
+
 def job_phase7() -> list[dict]:
     """6a gate, then Looks 3 → 1 → 6 → 2 → 4 → 5."""
     if HALT_PATH.exists() and os.environ.get("RAMSEY_FORCE_7") != "1":
