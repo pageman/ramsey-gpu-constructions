@@ -562,6 +562,12 @@ def job_4a() -> list[dict]:
         f"tri_free={gate['triangle_free']}  {gate['seconds']:.2f}s  cert={gate['cert'].get('reason')}",
         flush=True,
     )
+    
+    # Audit void CELL? candidates (residual > 256 width gate)
+    from .yu_pool import min_residual
+    void_count = 0
+    total_pools = 0
+    print("  [4a] Audit: checking width-gate for void CELL? candidates…", flush=True)
     rows: list[dict] = []
     w = load_yu_witness()
     p = int(w["p"])
@@ -596,6 +602,29 @@ def job_4a() -> list[dict]:
         if spec["p"] != last_p:
             last_p = spec["p"]
             append_record({"job": "4a", "checkpoint": True, "p": last_p})
+        
+        # Width-gate audit: check if this pool can ever yield exact-accept
+        total_pools += 1
+        min_resid = min_residual(spec["p"], len(spec["pool"]))
+        if min_resid > 256:
+            void_count += 1
+            if void_count <= 5:  # Report first few void cases
+                print(
+                    f"  [4a] VOID p={spec['p']} e={spec['e']} D{spec['i']}∪D{spec['j']} "
+                    f"min_residual={min_resid}>256 — never exact-accept (width-gate)",
+                    flush=True,
+                )
+            append_record({
+                "job": "4a_audit",
+                "p": spec["p"],
+                "e": spec["e"],
+                "i": spec["i"],
+                "j": spec["j"],
+                "void_reason": "min_residual>256",
+                "min_residual": min_resid,
+            })
+            continue
+        
         t_cell = 20
         for t, lb in sorted(R4_LOWER.items()):
             if spec["p"] + 1 > lb:
@@ -643,6 +672,9 @@ def job_4a() -> list[dict]:
                     f"  [4a] CELL? R(4,{t_cell}) ≥ {spec['p'] + 1}  (published ≥ {published})",
                     flush=True,
                 )
+    
+    print(f"  [4a] Audit summary: {void_count}/{total_pools} pools void (residual>256 width-gate)", flush=True)
+    append_record({"job": "4a_audit", "total_pools": total_pools, "void_count": void_count})
     return rows
 
 
@@ -837,6 +869,7 @@ def _register_phase5() -> None:
             "7c1": phase7.job_7c1,
             "7d": phase7.job_7d,
             "7e": phase7.job_7e,
+            "7e1": phase7.job_7e1,
             "7f": phase7.job_7f,
             "phase7": phase7.job_phase7,
         }

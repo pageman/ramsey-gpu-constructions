@@ -17,6 +17,7 @@ from .yu_pool import load_yu_witness
 ROOT = Path(__file__).resolve().parents[1]
 CERT2 = ROOT / "data" / "yu_r4_20.cert2.json"
 CERT2_ARCHIVE = ROOT / "data" / "phase5" / "yu_r4_20.cert2.json"
+CERT2_SUMMARY = ROOT / "data" / "yu_r4_20.cert2.summary.json"
 DIMACS = ROOT / "data" / "yu_r4_20.complement.clq"
 
 
@@ -148,19 +149,25 @@ def cliquer_decide(dimacs: Path, want: int, seconds: float) -> dict:
 def job_6a() -> list[dict]:
     """Second solver on Yu residual 186. Writes data/yu_r4_20.cert2.json."""
     tlim = float(os.environ.get("RAMSEY_6A_LIMIT", "180"))
-    print(f"  [6a] second solver on Yu residual 186  limit={tlim}s", flush=True)
+    backends_env = os.environ.get("RAMSEY_6A_BACKENDS", "cpsat,cliquer")
+    requested_backends = [b.strip().lower() for b in backends_env.split(",") if b.strip()]
+    print(f"  [6a] second solver on Yu residual 186  limit={tlim}s  backends={requested_backends}", flush=True)
     nbr, meta = residual_from_yu()
     if meta["residual_n"] != 186:
         raise SystemExit(f"6a expected residual 186, got {meta['residual_n']}")
     dimacs = write_complement_dimacs(nbr)
     print(f"  [6a] wrote {dimacs['path']}  n={dimacs['n']} complement_edges={dimacs['edges']}", flush=True)
 
-    sat19 = cpsat_decide(nbr, want=19, seconds=tlim)
-    print(f"  [6a] CP-SAT α≥19 {sat19}", flush=True)
-    sat18 = cpsat_decide(nbr, want=18, seconds=min(60.0, tlim))
-    print(f"  [6a] CP-SAT α≥18 {sat18}", flush=True)
-    clq = cliquer_decide(DIMACS, want=19, seconds=tlim)
-    print(f"  [6a] Cliquer clique-19 {clq}", flush=True)
+    # Run requested backends
+    sat19 = cpsat_decide(nbr, want=19, seconds=tlim) if "cpsat" in requested_backends else {"available": False, "found": False, "reason": "not_requested"}
+    if sat19.get("available"):
+        print(f"  [6a] CP-SAT α≥19 {sat19}", flush=True)
+    sat18 = cpsat_decide(nbr, want=18, seconds=min(60.0, tlim)) if "cpsat" in requested_backends else {"available": False, "found": False, "reason": "not_requested"}
+    if sat18.get("available"):
+        print(f"  [6a] CP-SAT α≥18 {sat18}", flush=True)
+    clq = cliquer_decide(DIMACS, want=19, seconds=tlim) if "cliquer" in requested_backends else {"available": False, "found": False, "reason": "not_requested"}
+    if clq.get("available"):
+        print(f"  [6a] Cliquer clique-19 {clq}", flush=True)
 
     no19 = False
     backend = None
@@ -199,6 +206,45 @@ def job_6a() -> list[dict]:
     CERT2.parent.mkdir(parents=True, exist_ok=True)
     CERT2.write_text(json.dumps(payload, indent=2, default=str) + "\n")
     print(f"  [6a] wrote {CERT2}  no_19_is={no19}  backend={backend}", flush=True)
+    
+    # Write docs-friendly summary
+    summary = {
+        "title": "Job 6a Second-Solver Bake-off: Yu Residual 186",
+        "written_utc": payload["written_utc"],
+        "residual_n": 186,
+        "target_alpha": 19,
+        "conclusion": {
+            "no_19_is": no19,
+            "second_solver_agrees": no19,
+            "backend": backend,
+        },
+        "backends_attempted": {
+            "cpsat_alpha_19": {
+                "available": sat19.get("available", False),
+                "found_19_is": sat19.get("found", False),
+                "unsat": sat19.get("unsat", False),
+                "timed_out": sat19.get("timed_out", False),
+                "seconds": sat19.get("seconds"),
+                "status": sat19.get("status_name"),
+            },
+            "cpsat_alpha_18": {
+                "available": sat18.get("available", False),
+                "found_18_is": sat18.get("found", False),
+                "seconds": sat18.get("seconds"),
+                "note": "Lower bound only; does not prove α=18 or α<19",
+            },
+            "cliquer_clique_19": {
+                "available": clq.get("available", False),
+                "found_19_clique": clq.get("found", False),
+                "timed_out": clq.get("timed_out", False),
+                "seconds": clq.get("seconds"),
+                "note": "Complement graph; 19-clique ⇔ 19-IS in residual",
+            },
+        },
+        "note": "Independent of c-decide. Timeout ≠ accept. An 18-IS is a lower bound only.",
+    }
+    CERT2_SUMMARY.write_text(json.dumps(summary, indent=2, default=str) + "\n")
+    print(f"  [6a] wrote summary {CERT2_SUMMARY}", flush=True)
     append_record(
         {
             "job": "6a",
