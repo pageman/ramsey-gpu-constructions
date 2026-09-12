@@ -82,6 +82,11 @@ def build_triangle_free_two_block_model(m: int) -> tuple:
     No hard triangle-free clauses up front (exponential at m=126). Use lazy CEGIS:
     solve → check K4-free → if triangle, add cut on supporting free bits → repeat.
     
+    Add mild search bias: degree/leftover lower bound to prevent all-zero attractor.
+    For n=2m, deg(0) ≈ |S0| + |S1| (with inversion closure multiplicity).
+    Leftover ≈ n - deg(0) - 1 = 2m - |S0| - |S1| - 1.
+    To keep leftover ≲200, force deg(0) ≳ 2m - 201, i.e., enough free bits true.
+    
     Returns: (model, xs, m) where xs are the free-bit variables.
     """
     try:
@@ -93,9 +98,22 @@ def build_triangle_free_two_block_model(m: int) -> tuple:
     model = cp_model.CpModel()
     xs = [model.NewBoolVar(f"bit{i}") for i in range(2 * free)]
     
-    # Optional: mild degree lower bound to keep leftover ≲200
-    # Prefer feasibility mode (objective mode C)
-    # Do NOT maximize |S0|+|S1|
+    # Degree/leftover lower bound to prevent all-zero attractor
+    # Each free bit contributes to degree (with inversion, typically 2× for d≠m/2)
+    # Conservative: force at least ceil((2m - 201) / 2) free bits true for leftover ≲200
+    # At m=126: 2m=252, need deg≥51, so ≥26 free bits (rough)
+    # At m=128: 2m=256, need deg≥55, so ≥28 free bits
+    # Scale back to avoid over-constraining at small m
+    n = 2 * m
+    target_deg = max(10, n - 201) if n > 50 else max(5, n // 4)
+    # Each free bit contributes ≈2 to degree (inversion), so need ≈ target_deg/2 bits
+    min_bits = max(1, target_deg // 3)  # Conservative: divide by 3 not 2 for safety
+    
+    if min_bits > 0 and min_bits < 2 * free:
+        model.Add(sum(xs) >= min_bits)
+    
+    # Do NOT maximize |S0|+|S1| as the night objective
+    # Feasibility mode with lower bound is the bias
     
     return model, xs, m
 
@@ -103,8 +121,9 @@ def build_triangle_free_two_block_model(m: int) -> tuple:
 def first_triangle_support_two_block(m: int, bits: list[int]) -> list[int] | None:
     """Free-bit indices that witness one triangle in N(0), or None.
     
-    Similar to cegis_pool.first_triangle_support_dists but for two-block free bits.
-    Returns indices into the 2*free_bit_index(m) free-bit vector.
+    Returns minimal free-bit indices that enable the specific triangle edges
+    (0→a, 0→b, 0→c, a↔b, a↔c, b↔c) in two-block geometry, NOT all true bits.
+    Pattern after cegis_pool.first_triangle_support_dists.
     """
     S0, S1 = bits_to_s0_s1(m, bits)
     if not S0 and not S1:
@@ -123,6 +142,23 @@ def first_triangle_support_two_block(m: int, bits: list[int]) -> list[int] | Non
     n = 2 * m
     nbrs = [int(i) for i in range(n) if adj[0, i]]
     
+    def undirected_dist_m(x: int) -> int:
+        """Circular distance in 1..⌊m/2⌋, or 0."""
+        x %= m
+        if x == 0:
+            return 0
+        return min(x, m - x)
+    
+    def dist_to_free_bit(d: int, is_cross: bool) -> int | None:
+        """Map a distance d to free-bit index, or None if not in free range."""
+        free = free_bit_index(m)
+        if d <= 0 or d > free:
+            return None
+        if is_cross:
+            return free + d - 1  # S1 free bits
+        else:
+            return d - 1  # S0 free bits
+    
     # Find a triangle in N(0)
     for i, a in enumerate(nbrs):
         for j in range(i + 1, len(nbrs)):
@@ -133,18 +169,45 @@ def first_triangle_support_two_block(m: int, bits: list[int]) -> list[int] | Non
                 c = nbrs[k]
                 if adj[a, c] and adj[b, c]:
                     # Found triangle (a, b, c) in N(0)
-                    # Determine which free bits support this triangle
+                    # Determine which free bits support the triangle edges
                     support_bits: set[int] = set()
                     
-                    # For each edge in the triangle, find the free bit(s) that enable it
-                    # Edge 0→a, 0→b, 0→c come from neighbourhood
-                    # Edge a↔b, a↔c, b↔c need to be tracked
+                    # Edges from 0 to {a, b, c}
+                    for v in (a, b, c):
+                        # Is v in block 0 or block 1?
+                        is_cross = (v >= m)
+                        v_mod = v % m
+                        
+                        # Distance from 0 to v
+                        if is_cross:
+                            # Cross-block: S1 distance
+                            d = undirected_dist_m(v_mod)
+                            bit_idx = dist_to_free_bit(d, True)
+                            if bit_idx is not None:
+                                support_bits.add(bit_idx)
+                        else:
+                            # Intra-block 0: S0 distance
+                            d = undirected_dist_m(v_mod)
+                            bit_idx = dist_to_free_bit(d, False)
+                            if bit_idx is not None:
+                                support_bits.add(bit_idx)
                     
-                    # Simple approach: any bit set in this configuration contributes
-                    # More precise: find which bits actually support these edges
-                    for idx, bit_val in enumerate(bits):
-                        if bit_val == 1:
-                            support_bits.add(idx)
+                    # Edges within {a, b, c}
+                    for u, v in [(a, b), (a, c), (b, c)]:
+                        # Same block or cross-block?
+                        if (u < m and v < m) or (u >= m and v >= m):
+                            # Intra-block: S0 distance
+                            d = undirected_dist_m(abs((v % m) - (u % m)))
+                            bit_idx = dist_to_free_bit(d, False)
+                            if bit_idx is not None:
+                                support_bits.add(bit_idx)
+                        else:
+                            # Cross-block: S1 distance
+                            u_mod, v_mod = u % m, v % m
+                            d = undirected_dist_m(abs(v_mod - u_mod))
+                            bit_idx = dist_to_free_bit(d, True)
+                            if bit_idx is not None:
+                                support_bits.add(bit_idx)
                     
                     return sorted(support_bits) if support_bits else None
     
