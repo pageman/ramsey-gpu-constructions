@@ -828,6 +828,163 @@ def job_7f() -> list[dict]:
     return rows
 
 
+def job_7e1() -> list[dict]:
+    """Look 4 extension: two-orbit 200≤n≤256, decide_alpha_le on full graph.
+    
+    NOT in phase7 loop — standalone CLI job. Minimal ILS (not stock ils_two_block).
+    Uses decide_alpha_le(target=t_cell) on full adjacency, respects halt-file.
+    Calls mixed_set_check before CELL? or documents residual_only.
+    """
+    from .jobs import emit_decision, _decision_cert
+    from .kernels.cayley import two_block_adj
+    from .kernels.sieve import quadratic_residue_row
+    from .kernels.decide_alpha import mixed_set_check
+
+    if HALT_PATH.exists() and os.environ.get("RAMSEY_FORCE_7") != "1":
+        print("  [7e1] HALT file exists — skip (set RAMSEY_FORCE_7=1 to override)", flush=True)
+        return []
+    
+    lim = limits()
+    tlim = float(lim["yu_mis_limit"])
+    is_runpod = scale_name() == "runpod"
+    ms = (126, 127, 128) if is_runpod else (127,)
+    steps = 16 if is_runpod else 8
+    rng = np.random.default_rng(20260901)
+    
+    print(f"  [7e1] Two-orbit 200≤n≤256  m={ms}  scale={scale_name()}", flush=True)
+    print(f"  [7e1] R4_LOWER={dict(sorted((t, lb) for t, lb in R4_LOWER.items() if t >= 17))}", flush=True)
+    write_status(job="7e1", state="running", ms=list(ms))
+    
+    rows: list[dict] = []
+    for m in ms:
+        n = 2 * m
+        if n < 200 or n > 256:
+            print(f"  [7e1] skip m={m} n={n} (want 200≤n≤256)", flush=True)
+            continue
+        
+        print(f"  [7e1] m={m} n={n}  seed…", flush=True)
+        # Seed construction (Paley or alternating, depending on m)
+        if m % 4 == 1:
+            try:
+                s0 = quadratic_residue_row(m).astype(np.uint8)
+            except Exception:
+                s0 = np.zeros(m, dtype=np.uint8)
+                s0[1::2] = 1
+        else:
+            s0 = np.zeros(m, dtype=np.uint8)
+            s0[1::2] = 1
+        s1 = np.roll(s0, m // 3)
+        s0[0] = 0
+        s1[0] = 0
+        
+        adj = two_block_adj(s0, s1)
+        best_adj = adj
+        best_g = greedy_mis(_adj_nbr(adj))
+        
+        # Minimal ILS: greedy hill-climb (NOT stock ils_two_block with k_clique=5)
+        print(f"  [7e1] m={m} ILS {steps} steps (minimal K4-free flip)…", flush=True)
+        for step in range(steps):
+            which = int(rng.integers(0, 2))
+            i = int(rng.integers(1, m))
+            vec = s0 if which == 0 else s1
+            vec[i] ^= 1
+            vec[(m - i) % m] = vec[i]
+            trial = two_block_adj(s0, s1)
+            if not _k4_free_adj(trial):
+                vec[i] ^= 1
+                vec[(m - i) % m] = vec[i]
+                continue
+            g = greedy_mis(_adj_nbr(trial))
+            if g < best_g:
+                best_g = g
+                best_adj = trial
+                print(f"    step {step + 1}/{steps} greedyα={g} (improvement)", flush=True)
+        
+        adj = best_adj
+        k4_free = _k4_free_adj(adj)
+        nbr = _adj_nbr(adj)
+        glo = greedy_mis(nbr)
+        print(f"  [7e1] m={m} n={n} K4_free={k4_free} greedyα={glo}", flush=True)
+        
+        if not k4_free:
+            append_record({"job": "7e1", "m": m, "n": n, "k4_free": False, "exact": False})
+            continue
+        
+        # Determine target cell
+        open_t = [t for t in r4_cells_open(n) if glo < t]
+        if not open_t:
+            print(f"  [7e1] n={n} greedyα={glo} no open R(4,t) cell", flush=True)
+            continue
+        t_cell = open_t[0]
+        published = R4_LOWER.get(t_cell, 0)
+        
+        print(f"  [7e1] decide_alpha_le α<{t_cell} (target=t_cell, NOT t-1)…", flush=True)
+        dec = decide_alpha_le(nbr, target=t_cell, time_limit=tlim)
+        print(
+            f"  [7e1] decide found={dec['found']} timeout={dec['timed_out']} "
+            f"exact={dec.get('exact')} backend={dec.get('backend')} nodes={dec.get('nodes')}",
+            flush=True,
+        )
+        
+        residual_accept = (not dec["found"]) and (not dec["timed_out"]) and dec.get("exact")
+        
+        # Before CELL?: check mixed_set if residual accepted
+        mixed_ok = False
+        if residual_accept:
+            # Build row from adjacency for mixed_set_check
+            row = adj[0].astype(np.uint8)
+            mix = mixed_set_check(row, t_cell, time_limit=min(20.0, tlim))
+            mixed_ok = mix.get("mixed_ok", False)
+            print(f"  [7e1] mixed_set {mix.get('reason')} mixed_ok={mixed_ok}", flush=True)
+        
+        cell_ok = residual_accept and mixed_ok
+        beats = cell_ok and n + 1 > published
+        
+        # Emit result
+        from .certify_fast import certify_fast
+        cert = certify_fast(adj, time_limit=0.05)
+        meta = {
+            "construction_type": "block_circulant",
+            "gpu_kernel": "7e1 two-orbit + decide_alpha_le(target=t_cell)",
+            "field": f"Z_2 × Z_{m}",
+            "params": {
+                "m": m,
+                "n": n,
+                "kind": "7e1",
+                "t_cell": t_cell,
+                "k4_free": True,
+                "mixed_ok": mixed_ok,
+            },
+            "run001": "not_done",
+        }
+        pack = cert
+        pack["exact"] = beats
+        if not beats:
+            pack["omega_exact"] = None
+            pack["alpha_exact"] = None
+        
+        rec = emit_decision(adj[0], meta, pack, "7e1", "R(4,t)")
+        rec["exact"] = beats
+        rows.append(rec)
+        
+        if beats:
+            print(
+                f"  [7e1] CELL? R(4,{t_cell}) ≥ {n + 1}  (published ≥ {published})  mixed_ok",
+                flush=True,
+            )
+        elif residual_accept and not mixed_ok:
+            print(
+                f"  [7e1] residual_only n={n} t={t_cell}  {mix.get('reason')}  not CELL?",
+                flush=True,
+            )
+        elif dec["timed_out"]:
+            print("  [7e1] timeout ≠ accept", flush=True)
+    
+    write_status(job="7e1", state="done", graphs=len(rows))
+    print(f"  [7e1] done  graphs={len(rows)}", flush=True)
+    return rows
+
+
 def job_phase7() -> list[dict]:
     """6a gate, then Looks 3 → 1 → 6 → 2 → 4 → 5."""
     if HALT_PATH.exists() and os.environ.get("RAMSEY_FORCE_7") != "1":

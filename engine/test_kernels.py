@@ -144,6 +144,28 @@ def test_decide_alpha_skips_n_over_256() -> None:
     _assert(rec["found"] is False, rec)
 
 
+def test_n257_path_never_exact_accept() -> None:
+    """Hard width-gate: n=257 sparse circulant never gets exact-accept."""
+    row = distances_to_row(257, [1, 2])
+    cert = certify_row_decision(row, t_cell=20, time_limit=0.2)
+    _assert(cert["exact"] is False, "n=257 should never exact-accept (width-gate)")
+    _assert("256" in cert.get("reason", "") or cert.get("rejected"), cert)
+    # Also verify with distances_to_row on 257 with minimal S
+    row2 = distances_to_row(257, [1])
+    cert2 = certify_row_decision(row2, t_cell=20, time_limit=0.2)
+    _assert(cert2["exact"] is False, "n=257 minimal S should never exact-accept")
+
+
+def test_paley17_still_exact() -> None:
+    """Regression: Paley(17) must still certify as exact k>3."""
+    row = quadratic_residue_row(17)
+    cert = certify_circulant_row(row, time_limit=1.0, paley_q=17)
+    _assert(cert["exact"] is True, f"Paley(17) should be exact, got {cert}")
+    _assert(cert["omega_exact"] == 3, f"Paley(17) ω=3, got {cert['omega_exact']}")
+    _assert(cert["alpha_exact"] == 3, f"Paley(17) α=3, got {cert['alpha_exact']}")
+    _assert(cert["k_certified"] == 4, f"Paley(17) certifies R(4,4)>17, got k={cert['k_certified']}")
+
+
 def test_decide_alpha_paley17_residual() -> None:
     row = quadratic_residue_row(17)
     nbr = residual_nbr(row)
@@ -162,7 +184,7 @@ def test_middle_third_seed_nonempty() -> None:
 def test_phase5_jobs_registered() -> None:
     from engine.jobs import JOBS
 
-    for name in ("5a", "5b", "5c", "5d", "5e", "5f", "phase5", "6a", "7a", "7b", "7c", "7c1", "7d", "7e", "7f", "phase7"):
+    for name in ("5a", "5b", "5c", "5d", "5e", "5f", "phase5", "6a", "7a", "7b", "7c", "7c1", "7d", "7e", "7e1", "7f", "phase7"):
         _assert(name in JOBS, name)
 
 
@@ -283,6 +305,8 @@ def main() -> int:
         test_boolean_residual_limit_skips_mcs,
         test_mis_n_over_256_is_not_a_certificate,
         test_decide_alpha_skips_n_over_256,
+        test_n257_path_never_exact_accept,
+        test_paley17_still_exact,
         test_decide_alpha_paley17_residual,
         test_middle_third_seed_nonempty,
         test_phase5_jobs_registered,
