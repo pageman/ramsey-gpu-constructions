@@ -828,14 +828,41 @@ def job_7f() -> list[dict]:
     return rows
 
 
+def _prioritize_open_t(open_t: list[int]) -> list[int]:
+    """Prioritize t=20,21 first, then remaining ascending."""
+    priority = [t for t in (20, 21) if t in open_t]
+    rest = sorted(t for t in open_t if t not in (20, 21))
+    return priority + rest
+
+
+def _extract_is_witness_greedy(nbr: list[int], target: int) -> list[int] | None:
+    """Extract a greedy IS witness of size >= target."""
+    from .kernels.bitset_mcs import greedy_mis_set
+    witness = greedy_mis_set(nbr)
+    return list(witness) if len(witness) >= target else None
+
+
+def _extract_is_witness_decide(nbr: list[int], target: int, seconds: float) -> list[int] | None:
+    """Extract an IS witness via decide_alpha_le with witness extraction."""
+    n = len(nbr)
+    if n > 256:
+        return None
+    from .kernels.decide_alpha import decide_alpha_le
+    dec = decide_alpha_le(nbr, target=target, time_limit=seconds)
+    if dec.get("found") and dec.get("witness"):
+        return dec["witness"]
+    return None
+
+
 def job_7e1() -> list[dict]:
-    """Look 4 extension: two-orbit 200≤n≤256, decide_alpha_le on full graph.
+    """Look 4 extension: two-orbit 200≤n≤256, decide ALL open t (prioritize 20,21).
     
     NOT in phase7 loop — standalone CLI job. Minimal ILS (not stock ils_two_block).
-    Uses decide_alpha_le(target=t_cell) on full adjacency, respects halt-file.
-    Calls mixed_set_check before CELL? or documents residual_only.
+    Uses decide_alpha_le(target=t) on full adjacency for EACH open t.
+    Extracts and persists IS witnesses when found=True.
+    Persists dumps to data/phase7/7e1/*.json.
     """
-    from .jobs import emit_decision, _decision_cert
+    from .jobs import emit_decision
     from .kernels.cayley import two_block_adj
     from .kernels.sieve import quadratic_residue_row
     from .kernels.decide_alpha import mixed_set_check
@@ -847,13 +874,24 @@ def job_7e1() -> list[dict]:
     lim = limits()
     tlim = float(lim["yu_mis_limit"])
     is_runpod = scale_name() == "runpod"
-    ms = (126, 127, 128) if is_runpod else (127,)
-    steps = 16 if is_runpod else 8
-    rng = np.random.default_rng(20260901)
+    
+    # Environment overrides for deeper search
+    focus_m_env = os.environ.get("RAMSEY_7E1_M", "")
+    if focus_m_env:
+        ms = tuple(int(x.strip()) for x in focus_m_env.split(",") if x.strip())
+    else:
+        ms = (126, 127, 128) if is_runpod else (127,)
+    
+    restarts_per_m = int(os.environ.get("RAMSEY_7E1_RESTARTS", "20" if is_runpod else "4"))
+    steps_per_restart = int(os.environ.get("RAMSEY_7E1_STEPS", "120" if is_runpod else "24"))
     
     print(f"  [7e1] Two-orbit 200≤n≤256  m={ms}  scale={scale_name()}", flush=True)
+    print(f"  [7e1] restarts={restarts_per_m} steps={steps_per_restart}", flush=True)
     print(f"  [7e1] R4_LOWER={dict(sorted((t, lb) for t, lb in R4_LOWER.items() if t >= 17))}", flush=True)
-    write_status(job="7e1", state="running", ms=list(ms))
+    write_status(job="7e1", state="running", ms=list(ms), restarts=restarts_per_m, steps=steps_per_restart)
+    
+    dump_dir = ROOT / "data" / "phase7" / "7e1"
+    dump_dir.mkdir(parents=True, exist_ok=True)
     
     rows: list[dict] = []
     for m in ms:
@@ -862,126 +900,240 @@ def job_7e1() -> list[dict]:
             print(f"  [7e1] skip m={m} n={n} (want 200≤n≤256)", flush=True)
             continue
         
-        print(f"  [7e1] m={m} n={n}  seed…", flush=True)
-        # Seed construction (Paley or alternating, depending on m)
-        if m % 4 == 1:
-            try:
-                s0 = quadratic_residue_row(m).astype(np.uint8)
-            except Exception:
-                s0 = np.zeros(m, dtype=np.uint8)
-                s0[1::2] = 1
-        else:
-            s0 = np.zeros(m, dtype=np.uint8)
-            s0[1::2] = 1
-        s1 = np.roll(s0, m // 3)
-        s0[0] = 0
-        s1[0] = 0
+        print(f"\n  [7e1] === m={m} n={n} ===", flush=True)
         
-        adj = two_block_adj(s0, s1)
-        best_adj = adj
-        best_g = greedy_mis(_adj_nbr(adj))
-        
-        # Minimal ILS: greedy hill-climb (NOT stock ils_two_block with k_clique=5)
-        print(f"  [7e1] m={m} ILS {steps} steps (minimal K4-free flip)…", flush=True)
-        for step in range(steps):
-            which = int(rng.integers(0, 2))
-            i = int(rng.integers(1, m))
-            vec = s0 if which == 0 else s1
-            vec[i] ^= 1
-            vec[(m - i) % m] = vec[i]
-            trial = two_block_adj(s0, s1)
-            if not _k4_free_adj(trial):
+        for restart in range(restarts_per_m):
+            rng = np.random.default_rng(20260901 + m * 1000 + restart)
+            
+            # Seed families: (a) roll, (b) random densities, (c) sparse s1
+            seed_family = "roll"
+            if restart % 3 == 1:
+                seed_family = "random_density"
+            elif restart % 3 == 2:
+                seed_family = "sparse_s1"
+            
+            print(f"  [7e1] m={m} restart {restart + 1}/{restarts_per_m} family={seed_family}", flush=True)
+            
+            # Generate seed
+            if seed_family == "roll":
+                if m % 4 == 1:
+                    try:
+                        s0 = quadratic_residue_row(m).astype(np.uint8)
+                    except Exception:
+                        s0 = np.zeros(m, dtype=np.uint8)
+                        s0[1::2] = 1
+                else:
+                    s0 = np.zeros(m, dtype=np.uint8)
+                    s0[1::2] = 1
+                s1 = np.roll(s0, m // 3 + restart)
+            elif seed_family == "random_density":
+                density = float(rng.choice([0.25, 0.33, 0.40]))
+                s0 = (rng.random(m) < density).astype(np.uint8)
+                s1 = (rng.random(m) < density).astype(np.uint8)
+                # Inversion-closed
+                for i in range(1, m):
+                    s0[m - i] = s0[i]
+                    s1[m - i] = s1[i]
+            else:  # sparse_s1
+                s0 = (rng.random(m) < 0.35).astype(np.uint8)
+                s1 = (rng.random(m) < 0.12).astype(np.uint8)
+                for i in range(1, m):
+                    s0[m - i] = s0[i]
+                    s1[m - i] = s1[i]
+            
+            s0[0] = 0
+            s1[0] = 0
+            
+            adj = two_block_adj(s0, s1)
+            best_adj = adj
+            best_s0 = s0.copy()
+            best_s1 = s1.copy()
+            best_g = greedy_mis(_adj_nbr(adj))
+            
+            # Minimal ILS
+            for step in range(steps_per_restart):
+                which = int(rng.integers(0, 2))
+                i = int(rng.integers(1, m))
+                vec = s0 if which == 0 else s1
                 vec[i] ^= 1
                 vec[(m - i) % m] = vec[i]
+                trial = two_block_adj(s0, s1)
+                if not _k4_free_adj(trial):
+                    vec[i] ^= 1
+                    vec[(m - i) % m] = vec[i]
+                    continue
+                g = greedy_mis(_adj_nbr(trial))
+                if g < best_g:
+                    best_g = g
+                    best_adj = trial
+                    best_s0 = s0.copy()
+                    best_s1 = s1.copy()
+                    if step % 40 == 0 or step < 10:
+                        print(f"      step {step + 1}/{steps_per_restart} greedyα={g} (improvement)", flush=True)
+            
+            adj = best_adj
+            s0 = best_s0
+            s1 = best_s1
+            k4_free = _k4_free_adj(adj)
+            nbr = _adj_nbr(adj)
+            glo = greedy_mis(nbr)
+            print(f"  [7e1] restart {restart + 1} K4_free={k4_free} greedyα={glo}", flush=True)
+            
+            if not k4_free:
+                dump = {
+                    "m": m,
+                    "n": n,
+                    "restart": restart,
+                    "seed_family": seed_family,
+                    "k4_free": False,
+                    "s0": s0.tolist(),
+                    "s1": s1.tolist(),
+                }
+                dump_path = dump_dir / f"m{m}_r{restart}_k4fail.json"
+                dump_path.write_text(json.dumps(dump, indent=2) + "\n")
+                append_record({"job": "7e1", "m": m, "restart": restart, "k4_free": False})
                 continue
-            g = greedy_mis(_adj_nbr(trial))
-            if g < best_g:
-                best_g = g
-                best_adj = trial
-                print(f"    step {step + 1}/{steps} greedyα={g} (improvement)", flush=True)
-        
-        adj = best_adj
-        k4_free = _k4_free_adj(adj)
-        nbr = _adj_nbr(adj)
-        glo = greedy_mis(nbr)
-        print(f"  [7e1] m={m} n={n} K4_free={k4_free} greedyα={glo}", flush=True)
-        
-        if not k4_free:
-            append_record({"job": "7e1", "m": m, "n": n, "k4_free": False, "exact": False})
-            continue
-        
-        # Determine target cell
-        open_t = [t for t in r4_cells_open(n) if glo < t]
-        if not open_t:
-            print(f"  [7e1] n={n} greedyα={glo} no open R(4,t) cell", flush=True)
-            continue
-        t_cell = open_t[0]
-        published = R4_LOWER.get(t_cell, 0)
-        
-        print(f"  [7e1] decide_alpha_le α<{t_cell} (target=t_cell, NOT t-1)…", flush=True)
-        dec = decide_alpha_le(nbr, target=t_cell, time_limit=tlim)
-        print(
-            f"  [7e1] decide found={dec['found']} timeout={dec['timed_out']} "
-            f"exact={dec.get('exact')} backend={dec.get('backend')} nodes={dec.get('nodes')}",
-            flush=True,
-        )
-        
-        residual_accept = (not dec["found"]) and (not dec["timed_out"]) and dec.get("exact")
-        
-        # Before CELL?: check mixed_set if residual accepted
-        mixed_ok = False
-        if residual_accept:
-            # Build row from adjacency for mixed_set_check
-            row = adj[0].astype(np.uint8)
-            mix = mixed_set_check(row, t_cell, time_limit=min(20.0, tlim))
-            mixed_ok = mix.get("mixed_ok", False)
-            print(f"  [7e1] mixed_set {mix.get('reason')} mixed_ok={mixed_ok}", flush=True)
-        
-        cell_ok = residual_accept and mixed_ok
-        beats = cell_ok and n + 1 > published
-        
-        # Emit result
-        from .certify_fast import certify_fast
-        cert = certify_fast(adj, time_limit=0.05)
-        meta = {
-            "construction_type": "block_circulant",
-            "gpu_kernel": "7e1 two-orbit + decide_alpha_le(target=t_cell)",
-            "field": f"Z_2 × Z_{m}",
-            "params": {
+            
+            # Determine ALL open t, prioritized
+            open_t_raw = [t for t in r4_cells_open(n) if glo < t]
+            if not open_t_raw:
+                print(f"  [7e1] n={n} greedyα={glo} no open R(4,t) cell", flush=True)
+                continue
+            
+            open_t = _prioritize_open_t(open_t_raw)
+            print(f"  [7e1] open_t={open_t_raw} prioritized={open_t}", flush=True)
+            
+            # Decide EVERY open t
+            decisions = {}
+            best_residual_accept_t = None
+            for t_cell in open_t:
+                published = R4_LOWER.get(t_cell, 0)
+                print(f"  [7e1]   decide t={t_cell} (published≥{published}) α<{t_cell}…", flush=True)
+                
+                dec = decide_alpha_le(nbr, target=t_cell, time_limit=tlim)
+                print(
+                    f"  [7e1]   t={t_cell} found={dec['found']} timeout={dec['timed_out']} "
+                    f"exact={dec.get('exact')} backend={dec.get('backend')} nodes={dec.get('nodes')}",
+                    flush=True,
+                )
+                
+                # Extract witness if found
+                witness = None
+                if dec.get("found"):
+                    if glo >= t_cell:
+                        witness = _extract_is_witness_greedy(nbr, t_cell)
+                        print(f"  [7e1]   t={t_cell} witness: greedy |I|={len(witness) if witness else 0}", flush=True)
+                    else:
+                        witness = _extract_is_witness_decide(nbr, t_cell, min(10.0, tlim))
+                        print(f"  [7e1]   t={t_cell} witness: decide extract |I|={len(witness) if witness else 0}", flush=True)
+                
+                residual_accept = (not dec["found"]) and (not dec["timed_out"]) and dec.get("exact")
+                decisions[t_cell] = {
+                    "found": dec["found"],
+                    "timed_out": dec["timed_out"],
+                    "exact": dec.get("exact"),
+                    "backend": dec.get("backend"),
+                    "nodes": dec.get("nodes"),
+                    "seconds": dec.get("seconds"),
+                    "residual_accept": residual_accept,
+                    "witness": witness,
+                }
+                
+                if residual_accept and best_residual_accept_t is None:
+                    best_residual_accept_t = t_cell
+                
+                if dec.get("found"):
+                    print(f"  [7e1]   t={t_cell} REJECT (found {t_cell}-IS)", flush=True)
+                elif dec.get("timed_out"):
+                    print(f"  [7e1]   t={t_cell} TIMEOUT (≠ accept)", flush=True)
+                elif residual_accept:
+                    print(f"  [7e1]   t={t_cell} residual-accept (α<{t_cell} proven)", flush=True)
+                else:
+                    print(f"  [7e1]   t={t_cell} inconclusive", flush=True)
+            
+            # Check mixed_set only on best residual_accept
+            mixed_ok = False
+            mix_reason = None
+            if best_residual_accept_t is not None:
+                t_cell = best_residual_accept_t
+                row = adj[0].astype(np.uint8)
+                # NOTE: mixed_set_check via adj[0] row is imperfect for two-block
+                # TODO: Consider two-block-aware mixed_set or skip mixed_ok for two-orbit
+                mix = mixed_set_check(row, t_cell, time_limit=min(20.0, tlim))
+                mixed_ok = mix.get("mixed_ok", False)
+                mix_reason = mix.get("reason")
+                print(f"  [7e1]   mixed_set t={t_cell} {mix_reason} mixed_ok={mixed_ok}", flush=True)
+                print(f"  [7e1]   NOTE: two-block mixed_set via adj[0] is imperfect; treat as preliminary", flush=True)
+            
+            # Persist dump
+            dump = {
                 "m": m,
                 "n": n,
-                "kind": "7e1",
-                "t_cell": t_cell,
-                "k4_free": True,
+                "restart": restart,
+                "seed_family": seed_family,
+                "s0": s0.tolist(),
+                "s1": s1.tolist(),
+                "k4_free": k4_free,
+                "greedy_alpha": glo,
+                "open_t": open_t,
+                "decisions": decisions,
+                "best_residual_accept_t": best_residual_accept_t,
                 "mixed_ok": mixed_ok,
-            },
-            "run001": "not_done",
-        }
-        pack = cert
-        pack["exact"] = beats
-        if not beats:
-            pack["omega_exact"] = None
-            pack["alpha_exact"] = None
-        
-        rec = emit_decision(adj[0], meta, pack, "7e1", "R(4,t)")
-        rec["exact"] = beats
-        rows.append(rec)
-        
-        if beats:
-            print(
-                f"  [7e1] CELL? R(4,{t_cell}) ≥ {n + 1}  (published ≥ {published})  mixed_ok",
-                flush=True,
-            )
-        elif residual_accept and not mixed_ok:
-            print(
-                f"  [7e1] residual_only n={n} t={t_cell}  {mix.get('reason')}  not CELL?",
-                flush=True,
-            )
-        elif dec["timed_out"]:
-            print("  [7e1] timeout ≠ accept", flush=True)
+                "mixed_reason": mix_reason,
+            }
+            dump_path = dump_dir / f"m{m}_r{restart}.json"
+            dump_path.write_text(json.dumps(dump, indent=2, default=str) + "\n")
+            print(f"  [7e1]   wrote {dump_path}", flush=True)
+            
+            # Emit to catalog if we have a best residual_accept
+            if best_residual_accept_t is not None:
+                t_cell = best_residual_accept_t
+                published = R4_LOWER.get(t_cell, 0)
+                cell_ok = decisions[t_cell]["residual_accept"] and mixed_ok
+                beats = cell_ok and n + 1 > published
+                
+                from .certify_fast import certify_fast
+                cert = certify_fast(adj, time_limit=0.05)
+                meta = {
+                    "construction_type": "block_circulant",
+                    "gpu_kernel": "7e1 two-orbit + decide_alpha_le(target=t) for all open t",
+                    "field": f"Z_2 × Z_{m}",
+                    "params": {
+                        "m": m,
+                        "n": n,
+                        "restart": restart,
+                        "seed_family": seed_family,
+                        "kind": "7e1",
+                        "t_cell": t_cell,
+                        "k4_free": True,
+                        "mixed_ok": mixed_ok,
+                        "open_t": open_t,
+                    },
+                    "run001": "not_done",
+                }
+                pack = cert
+                pack["exact"] = beats
+                if not beats:
+                    pack["omega_exact"] = None
+                    pack["alpha_exact"] = None
+                
+                rec = emit_decision(adj[0], meta, pack, "7e1", "R(4,t)")
+                rec["exact"] = beats
+                rows.append(rec)
+                
+                if beats:
+                    print(
+                        f"  [7e1]   CELL? R(4,{t_cell}) ≥ {n + 1}  (published ≥ {published})  mixed_ok",
+                        flush=True,
+                    )
+                elif decisions[t_cell]["residual_accept"] and not mixed_ok:
+                    print(
+                        f"  [7e1]   residual_only n={n} t={t_cell}  {mix_reason}  not CELL?",
+                        flush=True,
+                    )
     
-    write_status(job="7e1", state="done", graphs=len(rows))
-    print(f"  [7e1] done  graphs={len(rows)}", flush=True)
+    write_status(job="7e1", state="done", graphs=len(rows), dumps_in=str(dump_dir))
+    print(f"\n  [7e1] done  graphs={len(rows)}  dumps in {dump_dir}", flush=True)
     return rows
 
 

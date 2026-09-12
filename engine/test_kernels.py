@@ -199,6 +199,37 @@ def test_r4_cells_open_251() -> None:
     _assert(min_residual(251, 50) <= 256, min_residual(251, 50))
 
 
+def test_r4_cells_open_252_includes_20_21() -> None:
+    """n=252 opens t=20,21 (beats published R(4,20)≥252 and R(4,21)≥252)."""
+    from engine.yu_pool import r4_cells_open
+    
+    open_252 = r4_cells_open(252)
+    _assert(20 in open_252, f"n=252 should open t=20, got {open_252}")
+    _assert(21 in open_252, f"n=252 should open t=21, got {open_252}")
+    _assert(17 in open_252, f"n=252 should open t=17, got {open_252}")
+
+
+def test_prioritize_open_t() -> None:
+    """Prioritization puts 20,21 first, then remaining ascending."""
+    from engine.phase7 import _prioritize_open_t
+    
+    open_t = [17, 18, 19, 20, 21]
+    prioritized = _prioritize_open_t(open_t)
+    _assert(prioritized[:2] == [20, 21], f"20,21 should be first, got {prioritized}")
+    _assert(prioritized[2:] == [17, 18, 19], f"Remaining should be ascending, got {prioritized}")
+    
+    # Edge case: no 20 or 21
+    open_t2 = [17, 18, 19]
+    prioritized2 = _prioritize_open_t(open_t2)
+    _assert(prioritized2 == [17, 18, 19], f"Should be ascending when no 20,21, got {prioritized2}")
+    
+    # Edge case: only 21
+    open_t3 = [17, 21, 19]
+    prioritized3 = _prioritize_open_t(open_t3)
+    _assert(prioritized3[0] == 21, f"21 should be first, got {prioritized3}")
+    _assert(prioritized3[1:] == [17, 19], f"Rest should be ascending, got {prioritized3}")
+
+
 def test_greedy_mis_set_matches_count() -> None:
     from engine.kernels.bitset_mcs import greedy_mis, greedy_mis_set
 
@@ -311,6 +342,8 @@ def main() -> int:
         test_middle_third_seed_nonempty,
         test_phase5_jobs_registered,
         test_r4_cells_open_251,
+        test_r4_cells_open_252_includes_20_21,
+        test_prioritize_open_t,
         test_greedy_mis_set_matches_count,
         test_cegis_cut_excludes_witness_s,
         test_triangle_support_cut_on_fat_s,
