@@ -1180,7 +1180,7 @@ def job_7e4() -> list[dict]:
     # Environment knobs
     if scale_name() == "local":
         ms_default = "101,113"  # Need m≥101 for n≥202 to have open R(4,t) cells
-        cuts_default = 5
+        cuts_default = 10  # Raised from 5 to allow seed-first + cold CEGIS cuts
         rounds_default = 4
         sat_default = 8.0
         pool_wall_default = 20.0
@@ -1206,13 +1206,18 @@ def job_7e4() -> list[dict]:
     warm_start = os.environ.get("RAMSEY_7E4_WARM") == "1"
     warm_radius = int(os.environ.get("RAMSEY_7E4_WARM_RADIUS", "0"))
     
+    # Seed-first cut policy: only cut for these t values during warm-start evaluation
+    seed_first_t_str = os.environ.get("RAMSEY_7E4_SEED_FIRST_T", "20,21")
+    seed_first_t_targets = [int(x.strip()) for x in seed_first_t_str.split(",") if x.strip()]
+    
     print(
         f"  [7e4] Look 4 / R(4,20)≥252 CEGIS on two-orbit (S0,S1) m={ms} "
         f"rounds≤{rounds} cuts_cap={cuts_cap} tri_fix_cap={tri_fix_cap} pool_wall={pool_wall}s sat={sat_lim}s mis={mis_lim}s  "
+        f"seed_first_t={seed_first_t_targets}  "
         f"NOT maximize |S|; learning=leftover-IS-cuts (NOT --job 7c)",
         flush=True,
     )
-    write_status(job="7e4", state="running", ms=ms, rounds=rounds, cuts_cap=cuts_cap, tri_fix_cap=tri_fix_cap)
+    write_status(job="7e4", state="running", ms=ms, rounds=rounds, cuts_cap=cuts_cap, tri_fix_cap=tri_fix_cap, seed_first_t=seed_first_t_targets)
     
     rows: list[dict] = []
     total_cuts = 0
@@ -1427,6 +1432,15 @@ def job_7e4() -> list[dict]:
                         continue  # Next m
                     
                     if dec["found"]:
+                        # Only add cuts for seed_first_t_targets (default: t=20,21)
+                        if t_cell not in seed_first_t_targets:
+                            print(
+                                f"    [7e4] ROUND 1 found=True for t={t_cell}, but t not in seed-first cut targets {seed_first_t_targets}. "
+                                "Log decision but do not add cut. Proceed to cold CEGIS.",
+                                flush=True,
+                            )
+                            continue
+                        
                         # Extract IS witness and add cut (same path as main CEGIS loop)
                         from .cegis_two_block import extract_is_full_graph, is_cut_two_block_lits, verify_is_independent_full
                         
