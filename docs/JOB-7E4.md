@@ -80,7 +80,7 @@ be true.
 
 ## 4. Per-m loop (what the code actually does)
 
-For each m in `RAMSEY_7E4_M` (default 126,128 runpod / 17,29 local):
+For each m in `RAMSEY_7E4_M` (default 126,128 runpod / 101,113 local; m≥101 needed for open R(4,t) at n≥202):
 
 0. Build one CP-SAT model: triangle-free N(0) (including cross-block).
 1. **Round r=1,2,...** until `RAMSEY_7E4_ROUNDS` or `RAMSEY_7E4_POOL_WALL` seconds.
@@ -108,7 +108,7 @@ hit-I clause. They are not the same.
 
 | Key | local | runpod | Meaning |
 |---|---|---|---|
-| `RAMSEY_7E4_M` | 17,29 | 126,128 | Comma-separated moduli (n=2m) |
+| `RAMSEY_7E4_M` | 101,113 | 126,128 | Comma-separated moduli (n=2m); m≥101 for open cells |
 | `RAMSEY_7E4_CUTS` | 5 | 20 | Cut cap per m |
 | `RAMSEY_7E4_ROUNDS` | 4 | 16 | Max CEGIS rounds per m |
 | `RAMSEY_7E4_SAT` | 8 s | 30 s | Max SAT wall per round |
@@ -179,10 +179,11 @@ gcc -O3 -shared -fPIC -fopenmp -o engine/kernels/native_decide.so engine/kernels
 ```bash
 cd /workspace/ramsey-gpu-constructions
 python3 engine/test_kernels.py
-RAMSEY_FORCE_7=1 RAMSEY_7E4_M=17 RAMSEY_7E4_CUTS=5 python3 -u -m engine.cli --job 7e4 --scale local
+RAMSEY_FORCE_7=1 RAMSEY_7E4_M=101 RAMSEY_7E4_CUTS=3 python3 -u -m engine.cli --job 7e4 --scale local
 ```
 
-Local is **m=17,29; 4 rounds, 5 cuts cap, 20 s/m**. It checks wiring
+Local is **m=101,113 (default) or override with M=101; 4 rounds, 5 cuts cap, 20 s/m**.
+Note: m=17 will skip (no open R(4,t) cells at n=34). It checks wiring
 (triangle-cuts, leftover-IS-cuts). It will not mint 252. Do not read a local
 `graphs=0` as the runpod result.
 
