@@ -99,15 +99,14 @@ def build_triangle_free_two_block_model(m: int) -> tuple:
     xs = [model.NewBoolVar(f"bit{i}") for i in range(2 * free)]
     
     # Degree/leftover lower bound to prevent all-zero attractor
-    # Each free bit contributes to degree (with inversion, typically 2× for d≠m/2)
-    # Conservative: force at least ceil((2m - 201) / 2) free bits true for leftover ≲200
-    # At m=126: 2m=252, need deg≥51, so ≥26 free bits (rough)
-    # At m=128: 2m=256, need deg≥55, so ≥28 free bits
-    # Scale back to avoid over-constraining at small m
+    # Target: deg(0) ≥ n/3 to keep leftover small enough for greedy_alpha < open_t
+    # Each free bit contributes ≈2 to degree (with inversion closure)
+    # Formula: min_bits = n/6, ensuring deg ≈ n/3 or leftover ≈ 2n/3
+    # At m=101 (n=202): min_bits≈34, deg≈68, leftover≈133
+    # At m=126 (n=252): min_bits≈42, deg≈84, leftover≈167
+    # At m=128 (n=256): min_bits≈43, deg≈86, leftover≈169
     n = 2 * m
-    target_deg = max(10, n - 201) if n > 50 else max(5, n // 4)
-    # Each free bit contributes ≈2 to degree (inversion), so need ≈ target_deg/2 bits
-    min_bits = max(1, target_deg // 3)  # Conservative: divide by 3 not 2 for safety
+    min_bits = max(3, n // 6)  # At least 3 bits; aim for deg ≥ n/3
     
     if min_bits > 0 and min_bits < 2 * free:
         model.Add(sum(xs) >= min_bits)

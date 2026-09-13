@@ -1179,7 +1179,7 @@ def job_7e4() -> list[dict]:
     
     # Environment knobs
     if scale_name() == "local":
-        ms_default = "17,29"
+        ms_default = "101,113"  # Need m≥101 for n≥202 to have open R(4,t) cells
         cuts_default = 5
         rounds_default = 4
         sat_default = 8.0
@@ -1249,7 +1249,6 @@ def job_7e4() -> list[dict]:
             warm_path = ROOT / "data" / "phase7" / "7e1" / f"m{m}_best.json"
             if warm_path.exists():
                 try:
-                    import json
                     warm_data = json.loads(warm_path.read_text())
                     warm_bits = warm_data.get("bits")
                     print(f"  [7e4] loaded warm-start from {warm_path}", flush=True)
@@ -1391,10 +1390,6 @@ def job_7e4() -> list[dict]:
             deg_0 = int(adj[0].sum())
             leftover = n - deg_0 - 1
             
-            # Calculate degree and leftover for logging
-            deg_0 = int(adj[0].sum())
-            leftover = n - deg_0 - 1
-            
             print(
                 f"    [7e4]   |S0|={len(S0)} |S1|={len(S1)} deg(0)={deg_0} leftover={leftover} "
                 f"K4_free=True greedyα={greedy_alpha}",
@@ -1405,6 +1400,16 @@ def job_7e4() -> list[dict]:
             if len(S0) == 0 and len(S1) == 0:
                 print(
                     "    [7e4]   all-zero assignment (empty S0,S1) — nogood and continue",
+                    flush=True,
+                )
+                model.Add(assignment_nogood(xs, m, bits))
+                continue
+            
+            # High-greedy check: if greedy_alpha ≥ all open t, nogood (cannot beat any cell)
+            if greedy_alpha >= min(priority_t) if priority_t else float('inf'):
+                print(
+                    f"    [7e4]   greedyα={greedy_alpha} ≥ min(open_t)={min(priority_t) if priority_t else 'none'} "
+                    f"— nogood and continue (cannot open any cell)",
                     flush=True,
                 )
                 model.Add(assignment_nogood(xs, m, bits))

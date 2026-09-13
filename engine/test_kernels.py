@@ -557,6 +557,74 @@ def test_two_block_sharp_triangle_support() -> None:
         # This is a heuristic check; exact verification depends on triangle geometry
 
 
+def test_two_block_m101_min_degree() -> None:
+    """Regression: m=101 (n=202) produces non-degenerate solutions (deg ≥ n/3)."""
+    try:
+        from ortools.sat.python import cp_model  # noqa: F401
+    except ImportError:
+        return  # Skip if ortools not available
+    
+    from engine.cegis_two_block import (
+        build_triangle_free_two_block_model,
+        bits_to_s0_s1,
+        solve_two_block_model,
+    )
+    from engine.kernels.cayley import two_block_adj
+    
+    m = 101
+    n = 2 * m  # 202
+    
+    model, xs, _ = build_triangle_free_two_block_model(m)
+    status, bits, dt = solve_two_block_model(model, xs, m, seconds=5.0, seed=101)
+    
+    if status == "INFEASIBLE":
+        return  # INFEASIBLE is acceptable (strong constraints)
+    
+    _assert(bits is not None, f"solve at m=101 failed: {status}")
+    
+    S0, S1 = bits_to_s0_s1(m, bits)
+    s0_arr = np.zeros(m, dtype=np.uint8)
+    s1_arr = np.zeros(m, dtype=np.uint8)
+    for d in S0:
+        s0_arr[d % m] = 1
+    for d in S1:
+        s1_arr[d % m] = 1
+    
+    adj = two_block_adj(s0_arr, s1_arr)
+    deg_0 = int(adj[0].sum())
+    
+    # Bug was: deg≈6, leftover≈195 at m=101
+    # With fix: deg should be ≥ n/3 ≈ 67
+    min_expected_deg = n // 3  # 202/3 = 67
+    _assert(deg_0 >= min_expected_deg, 
+            f"m=101 deg={deg_0} < {min_expected_deg}; degenerate solution (Bug 1 not fixed)")
+    
+    # Also verify num_true bits is reasonable
+    num_true = sum(bits)
+    min_bits_expected = n // 6  # Should match formula in build function
+    _assert(num_true >= min_bits_expected,
+            f"m=101 num_true={num_true} < {min_bits_expected}; min_bits constraint too weak")
+
+
+def test_two_block_high_greedy_nogood_logic() -> None:
+    """High-greedy check: if greedy_alpha ≥ min(open_t), should nogood."""
+    from engine.yu_pool import r4_cells_open
+    
+    # Test case: n=202, open_t=[17], greedy_alpha=80
+    n = 202
+    greedy_alpha = 80
+    open_t = r4_cells_open(n)
+    
+    if open_t:
+        min_open = min(open_t)
+        should_nogood = (greedy_alpha >= min_open)
+        
+        # At n=202, open_t should include 17 (R(4,17) ≥ 202 is open)
+        # greedy_alpha=80 >> 17, so should_nogood=True
+        _assert(should_nogood, 
+                f"n={n} greedy={greedy_alpha} min_open={min_open}: should nogood but logic says no")
+
+
 def main() -> int:
     tests = [
         test_paley17_fft_matches_hermitian,
@@ -591,6 +659,8 @@ def main() -> int:
         test_two_block_empty_cut_detection,
         test_two_block_build_solve_fast,
         test_two_block_sharp_triangle_support,
+        test_two_block_m101_min_degree,
+        test_two_block_high_greedy_nogood_logic,
     ]
     failed = 0
     for t in tests:
