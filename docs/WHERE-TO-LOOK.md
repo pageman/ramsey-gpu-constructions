@@ -374,15 +374,31 @@ cuts) then cut 13935 times across 181 pools and still found no cell.
 Do not rerun `pod-phase7.sh` or `--job 7c`. Guide for the finished job:
 [`JOB-7C1.md`](JOB-7C1.md). Scoreboard: [`PHASE7-CAMPAIGN.md`](PHASE7-CAMPAIGN.md).
 
+**Session 2026-09-12/13:** Closed incompletes (6a negative, 4a void audit, 3d
+abandoned, 5d width-skip). **7e.1 ran** (multi-t decide, priority t=20,21);
+dumps under `data/phase7/7e1/`. **Obstruction moved** — full-graph α can exceed
+greedy on two-orbit K4-free graphs (decide rejects even when greedy α<t). Not
+the same as 7c1 leftover-only. **7e.4 Waves A–C on main** (PRs #2–#8): CP-SAT
+CEGIS on two-block, lazy triangle repair, warm-starts from 7e1, seed-first
+round, IS-cuts. Wave C local smoke (m=126 WARM=1): seed-first works, decide
+runs, IS-cuts fire — **no CELL?** yet. Cold CEGIS mostly triangle-repair-cap or
+greedy-α≈126 nogood. **Wave D blocked** on warm-basin retention (keep hints /
+TRI_FIX diversity). Session note: [`SESSION-2026-09-13.md`](SESSION-2026-09-13.md).
+
 Implemented as **`phase7`** (`docs/JOB-PHASE7.md`) for Looks 3→1→6→2→4→5.
 That wrapper is **done**. Do not re-run it.
 
 1. ~~Finish **6a**~~ Hygiene only. CP-SAT unsat-19 **timed out**. Timeout \(\neq\) proof. Residual is 5a/7a `c-decide`.
-2. ~~Port Yu’s **matching colour + flatten**~~ 7a: nodes \(\times 1/6\), wall clock **worse**. Residual theorem holds.
+2. ~~Port Yu's **matching colour + flatten**~~ 7a: nodes \(\times 1/6\), wall clock **worse**. Residual theorem holds.
 3. ~~Hunt pools with `min_resid ≤ width` via **7c1** CEGIS~~ Done. 181 pools, 13935 cuts, 0 CELL.
-4. If 1-circulant saturates: **2-polycirculant** with the same referee (**7e.1**, \(n\ge 200\)). Not 7e’s \(m\le 61\). **This is the next search, if any.**
-5. \(R(3,t)\) \(t\ge 50\) — 7d leftover 346–374 \(>256\). Width skip.
-6. Polarity leftover iff leftover \(\le\) width **and** \(N+1\) beats the floor. 7f: exact 84 vs 314.
+4. ~~Two-orbit scaffolding **7e.1**~~ Done. Multi-t decide (priority 20,21). Obstruction moved: K4-free low-greedy-α graphs can still have full-graph α≥t (rejection). Dumps persist under `data/phase7/7e1/` as warm-start seeds for 7e.4.
+5. **If 7e.1 obstruction can be escaped: 7e.4 warm-basin → Wave D** (CEGIS two-block with warm-start, after local validation). Docs: [`JOB-7E4.md`](JOB-7E4.md), [`JOB-7E4-PLAN.md`](JOB-7E4-PLAN.md). Waves A–C on main (PRs #2–#8). **Do not start overnight Wave D** until warm-basin retention (keep hints / TRI_FIX diversity / neighborhood bias) validates locally.
+6. \(R(3,t)\) \(t\ge 50\) — 7d leftover 346–374 \(>256\). Width skip. Coniglio owns \(k\le 49\).
+7. Polarity leftover iff leftover \(\le\) width **and** \(N+1\) beats the floor. 7f: exact 84 vs 314.
 
 The number that is still true is **252**. The place it can increment is a
 **new \(S\)** plus a **finished accept**, not a new GPU kernel.
+
+**Next action (explicit):** Validate warm-basin retention locally (m=126 WARM=1)
+before scheduling Wave D pod night. Do **not** rerun 7c / 7c1 / 7e (wrong job).
+Do **not** rerun 7e.1 (dumps persist; next is 7e.4 after warm-basin chase).

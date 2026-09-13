@@ -4,19 +4,31 @@ Explicit **GPU-native** Ramsey-graph families, plus the A40 search that
 followed Yu’s \(R(4,20)\ge 252\) (arXiv:2608.18169). Public tree:
 [github.com/pageman/ramsey-gpu-constructions](https://github.com/pageman/ramsey-gpu-constructions).
 
-**Status (30 Aug 2026).** No published +1. The number that is still true
+**Status (13 Sep 2026).** No published +1. The number that is still true
 is **252**. Paley(17) remains the best exact diagonal in this repo
-(\(\omega=\alpha=3\), \(R(4,4)>17\)). Job 4a’s `CELL? R(4,20)≥354` is
+(\(\omega=\alpha=3\), \(R(4,4)>17\)). Job 4a's `CELL? R(4,20)≥354` is
 **void** (residual \(n>256\)). Mixed-set residual \(\alpha\) is not
 \(\alpha(G)\). Timeout ≠ accept.
 
+**Session 2026-09-12/13:** Closed incompletes (6a cert2 negative, 4a void
+audit, 3d abandoned, 5d width-skip). **Obstruction moved** — 7e.1 multi-t
+decide revealed full-graph α can exceed greedy on two-orbit K4-free graphs
+(rejection, not leftover-only failure). **7e.4 Waves A–C on main** (PRs #2–#8):
+lazy triangle CEGIS, degree LB, warm-starts from 7e1 dumps, seed-first round,
+IS-cuts. Wave C local smoke (m=126 WARM=1): seed-first works, decide runs,
+IS-cuts fire, cold CEGIS continues — **no CELL?** yet. Cold rounds mostly
+triangle-repair-cap or greedy-α≈126 nogood. **Wave D blocked on
+warm-basin retention** (keep hints / TRI_FIX diversity). Do **not** start
+overnight Wave D until warm-basin chase validates locally.
+
 Campaign write-ups: [`docs/A40-CAMPAIGN.md`](docs/A40-CAMPAIGN.md) ·
 [`docs/PHASE5-CAMPAIGN.md`](docs/PHASE5-CAMPAIGN.md) ·
-[`docs/PHASE7-CAMPAIGN.md`](docs/PHASE7-CAMPAIGN.md). Inventory:
+[`docs/PHASE7-CAMPAIGN.md`](docs/PHASE7-CAMPAIGN.md) ·
+[`docs/SESSION-2026-09-13.md`](docs/SESSION-2026-09-13.md). Inventory:
 [`docs/MANIFEST-2A-7C1.md`](docs/MANIFEST-2A-7C1.md). Replay:
-[`docs/REPRODUCING.md`](docs/REPRODUCING.md). Next aisle (7c1 is done):
-[`docs/WHERE-TO-LOOK.md`](docs/WHERE-TO-LOOK.md) → **7e.1**, not another
-`--job 7c`.
+[`docs/REPRODUCING.md`](docs/REPRODUCING.md). Next search (7c1 done, 7e.1 dumps
+persist): [`docs/WHERE-TO-LOOK.md`](docs/WHERE-TO-LOOK.md) → **7e.4
+warm-basin → Wave D**, not another `--job 7c`, not more 7e.1.
 
 ## A40 scoreboard (jobs 2a–7c1)
 
@@ -48,9 +60,47 @@ Code that ran 7c1: git `98473e5`. Dumps: [`data/a40/`](data/a40/),
 A40 `phase7.log` is promoted on the Mac by
 `bash scripts/mac-finish-archive.sh` (landing pad `data/phase7-7c1.log`).
 
-Do **not** rerun `pod-phase7.sh` or `--job 7c`. Next *search* (if any)
-is **7e.1** (\(200\le n\le 256\), two-orbit + residual contract), not
-more SAT seconds.
+## September 2026 Session (Closeouts + Look 4 Deepening)
+
+Work completed 12–13 Sep 2026 (tip ~`e63c80d`, branched from `c32babe`).
+
+**Closeout docs (new):**
+- [`docs/JOB-6A-BAKEOFF.md`](docs/JOB-6A-BAKEOFF.md) (already on main): 6a cert2 α≥19 **timeout** (negative)
+- [`docs/A40-4A-VOID-AUDIT.md`](docs/A40-4A-VOID-AUDIT.md): p=337,353 residual >256 → void CELL?
+- [`docs/JOB-3D-CLOSEOUT.md`](docs/JOB-3D-CLOSEOUT.md): ANF n=13,14 hung on max_clique
+- [`docs/PHASE5-5D-SCOREBOARD.md`](docs/PHASE5-5D-SCOREBOARD.md): R(3,50)+ all WIDTH_SKIP
+
+**Job 7e.1:** Multi-t decide (priority t=20,21) on full-graph adjacency.
+**Obstruction moved** — K4-free graphs with low greedy α can still have
+full-graph α≥t (decide rejects). Not the same as 7c1 leftover-only. Dumps under
+`data/phase7/7e1/` (warm-start seeds for 7e4). Docs: [`JOB-7E1.md`](docs/JOB-7E1.md).
+
+**Job 7e.4 Waves A–C (PRs #2–#8):** CP-SAT CEGIS on two-block circulants
+(m=126,128 → n=252,256), O(m) free bits, lazy triangle repair, degree LB, IS
+cuts on full graph. Merged:
+- #2 (Waves A–B): `cegis_two_block.py`, triangle-free model, sharp cuts
+- #3 (Wave C): stronger deg LB, greedy nogood, local M≥101
+- #4: warm-start from 7e1 dumps + `tri_fix_cap`
+- #5: seed-first warm round (evaluate before SAT)
+- #6: ortools 9.15 `model.AddHint` fix
+- #7: seed-first reject adds IS-cut
+- #8: seed-cut only primary t; local cuts_cap 5→10
+
+Wave C local smoke (m=126 WARM=1): seed-first loads 7e1 → decide runs → IS-cuts
+fire → cold CEGIS continues. **No CELL?** yet. Cold rounds mostly
+**triangle-repair-cap** or **greedy-α≈126 nogood** (warm-basin retention open).
+
+**Wave D blocked:** Do **not** run overnight until warm-basin chase (keep hints
+/ TRI_FIX diversity) validates locally. Docs: [`JOB-7E4.md`](docs/JOB-7E4.md),
+[`JOB-7E4-PLAN.md`](docs/JOB-7E4-PLAN.md).
+
+**Compute:** A100 SXM pod `ramsey-A100-sxm` **stopped** (not Terminated).
+Next compute is Mac local Wave C / future Wave D only when scheduled — **not**
+"rent GPU now."
+
+Do **not** rerun `pod-phase7.sh` or `--job 7c`. Do **not** reopen `--job 7c1`.
+Next *search* is **7e.4 warm-basin → Wave D** (two-orbit CEGIS after 7e.1
+dumps), not another 7c, not more 7e.1.
 
 ## What this repo is
 
@@ -145,6 +195,29 @@ Replay 7c1 **wiring** only (not the A40 hunt):
 RAMSEY_FORCE_7=1 python3 -u -m engine.cli --job 7c1 --scale local
 python3 engine/test_kernels.py
 ```
+
+**Entrypoint:** `python3 -m engine.cli` (not `python3 engine.jobs`).
+
+CLI examples for September jobs (7e.1 / 7e.4):
+
+```bash
+# Job 7e.1: Multi-t decide on two-orbit (local smoke m=127)
+RAMSEY_FORCE_7=1 RAMSEY_7E1_M="127" RAMSEY_7E1_RESTARTS=2 RAMSEY_7E1_STEPS=16 \
+  python3 -u -m engine.cli --job 7e1 --scale local
+
+# Job 7e.4: CEGIS two-block (local wiring m=101)
+RAMSEY_FORCE_7=1 RAMSEY_7E4_M=101 RAMSEY_7E4_CUTS=3 RAMSEY_7E4_TRI_FIX=12 \
+  python3 -u -m engine.cli --job 7e4 --scale local
+
+# Job 7e.4: With warm-start from 7e1 dumps (m=126, if dumps exist)
+RAMSEY_FORCE_7=1 RAMSEY_7E4_M=126 RAMSEY_7E4_WARM=1 RAMSEY_7E4_CUTS=8 \
+  RAMSEY_7E4_ROUNDS=6 RAMSEY_7E4_TRI_FIX=16 \
+  python3 -u -m engine.cli --job 7e4 --scale local
+```
+
+Local smoke does **not** mint 252. Expect `graphs=0` or small catalogue rows
+(wiring validation, not hunt). See [`docs/JOB-7E1.md`](docs/JOB-7E1.md) and
+[`docs/JOB-7E4.md`](docs/JOB-7E4.md) for runpod defaults and environment knobs.
 
 ## RunPod
 
