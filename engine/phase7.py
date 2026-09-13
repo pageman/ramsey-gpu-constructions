@@ -1185,6 +1185,7 @@ def job_7e4() -> list[dict]:
         sat_default = 8.0
         pool_wall_default = 20.0
         mis_default = 8.0
+        tri_fix_default = 12
     else:
         ms_default = "126,128"
         cuts_default = 20
@@ -1192,6 +1193,7 @@ def job_7e4() -> list[dict]:
         sat_default = 30.0
         pool_wall_default = 90.0
         mis_default = 25.0
+        tri_fix_default = 24
     
     ms_str = os.environ.get("RAMSEY_7E4_M", ms_default)
     ms = [int(x.strip()) for x in ms_str.split(",")]
@@ -1200,15 +1202,16 @@ def job_7e4() -> list[dict]:
     sat_lim = float(os.environ.get("RAMSEY_7E4_SAT", sat_default))
     pool_wall = float(os.environ.get("RAMSEY_7E4_POOL_WALL", pool_wall_default))
     mis_lim = float(os.environ.get("RAMSEY_7E4_MIS", mis_default))
+    tri_fix_cap = int(os.environ.get("RAMSEY_7E4_TRI_FIX", tri_fix_default))
     warm_start = os.environ.get("RAMSEY_7E4_WARM") == "1"
     
     print(
         f"  [7e4] Look 4 / R(4,20)≥252 CEGIS on two-orbit (S0,S1) m={ms} "
-        f"rounds≤{rounds} cuts_cap={cuts_cap} pool_wall={pool_wall}s sat={sat_lim}s mis={mis_lim}s  "
+        f"rounds≤{rounds} cuts_cap={cuts_cap} tri_fix_cap={tri_fix_cap} pool_wall={pool_wall}s sat={sat_lim}s mis={mis_lim}s  "
         f"NOT maximize |S|; learning=leftover-IS-cuts (NOT --job 7c)",
         flush=True,
     )
-    write_status(job="7e4", state="running", ms=ms, rounds=rounds, cuts_cap=cuts_cap)
+    write_status(job="7e4", state="running", ms=ms, rounds=rounds, cuts_cap=cuts_cap, tri_fix_cap=tri_fix_cap)
     
     rows: list[dict] = []
     total_cuts = 0
@@ -1243,19 +1246,70 @@ def job_7e4() -> list[dict]:
             flush=True,
         )
         
-        # Optional warm-start loading
+        # Optional warm-start loading from 7e1 dumps
         warm_bits = None
         if warm_start:
-            warm_path = ROOT / "data" / "phase7" / "7e1" / f"m{m}_best.json"
-            if warm_path.exists():
+            from .cegis_two_block import s0_s1_to_bits
+            
+            dump_dir = ROOT / "data" / "phase7" / "7e1"
+            if dump_dir.exists():
+                # Scan for dumps with matching m: m{m}_r{restart}.json
+                # Prefer K4_free=True, then by restart number (higher = more iterations)
+                candidates = []
                 try:
-                    warm_data = json.loads(warm_path.read_text())
-                    warm_bits = warm_data.get("bits")
-                    print(f"  [7e4] loaded warm-start from {warm_path}", flush=True)
-                except Exception:
-                    pass
-        
+                    for dump_file in dump_dir.glob(f"m{m}_r*.json"):
+                        if dump_file.name.endswith("_k4fail.json"):
+                            continue  # Skip K4-fail dumps
+                        try:
+                            dump_data = json.loads(dump_file.read_text())
+                            if dump_data.get("m") == m and dump_data.get("k4_free"):
+                                restart = dump_data.get("restart", 0)
+                                greedy_alpha = dump_data.get("greedy_alpha", 999)
+                                candidates.append((greedy_alpha, restart, dump_data, dump_file))
+                        except Exception:
+                            continue
+                    
+                    if candidates:
+                        # Sort by greedy_alpha ascending (better quality), then restart descending
+                        candidates.sort(key=lambda x: (x[0], -x[1]))
+                        best_greedy, best_restart, best_data, best_file = candidates[0]
+                        
+                        S0 = best_data.get("s0", [])
+                        S1 = best_data.get("s1", [])
+                        if S0 is not None and S1 is not None:
+                            # Convert numpy arrays to lists if needed
+                            if hasattr(S0, 'tolist'):
+                                S0 = S0.tolist()
+                            if hasattr(S1, 'tolist'):
+                                S1 = S1.tolist()
+                            
+                            # Convert (S0,S1) to free bits
+                            # Need to convert to distance lists from indicator arrays
+                            S0_dists = [i for i, v in enumerate(S0) if v] if isinstance(S0[0], (int, float)) else S0
+                            S1_dists = [i for i, v in enumerate(S1) if v] if isinstance(S1[0], (int, float)) else S1
+                            
+                            try:
+                                warm_bits = s0_s1_to_bits(m, S0_dists, S1_dists)
+                                print(
+                                    f"  [7e4] loaded warm-start from {best_file.name} "
+                                    f"(restart={best_restart}, K4_free=True, greedyα={best_greedy})",
+                                    flush=True,
+                                )
+                            except Exception as e:
+                                print(f"  [7e4] warm-start conversion failed: {e}", flush=True)
+                    else:
+                        print(f"  [7e4] no K4-free 7e1 dumps found for m={m}", flush=True)
+                except Exception as e:
+                    print(f"  [7e4] warm-start scan failed: {e}", flush=True)        
         model, xs, _ = build_triangle_free_two_block_model(m)
+        
+        # Apply warm-start hint if available
+        if warm_bits:
+            from ortools.sat.python import cp_model
+            for i, bit_val in enumerate(warm_bits):
+                if i < len(xs):
+                    model.AddHint(xs[i], int(bit_val))
+            print(f"  [7e4] applied warm-start hint: {sum(warm_bits)}/{len(warm_bits)} bits set", flush=True)
         
         t_pool = time.perf_counter()
         pool_done = "rounds"
@@ -1334,16 +1388,23 @@ def job_7e4() -> list[dict]:
                     break
                 
                 print(
-                    f"    [7e4]   N(0) triangle fix={tri_fix} TRIANGLE-CUT |lits|={len(support)}",
+                    f"    [7e4]   N(0) triangle fix={tri_fix}/{tri_fix_cap} TRIANGLE-CUT |lits|={len(support)}",
                     flush=True,
                 )
                 model.Add(sum(xs[i] for i in support) <= len(support) - 1)
                 total_cuts += 1
                 
                 left = pool_wall - (time.perf_counter() - t_pool)
-                if left <= 0.05 or tri_fix >= 4:
+                if left <= 0.05:
                     print(
-                        f"    [7e4]   triangle-repair cap — nogood and continue",
+                        f"    [7e4]   pool_wall exhausted ({pool_wall}s) during triangle-repair — nogood",
+                        flush=True,
+                    )
+                    model.Add(assignment_nogood(xs, m, bits))
+                    break
+                if tri_fix >= tri_fix_cap:
+                    print(
+                        f"    [7e4]   triangle-repair cap hit ({tri_fix_cap}) — nogood, not K4-free after {tri_fix} repairs",
                         flush=True,
                     )
                     model.Add(assignment_nogood(xs, m, bits))
