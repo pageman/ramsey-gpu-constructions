@@ -104,7 +104,7 @@ be true.
 For each m in `RAMSEY_7E4_M` (default 126,128 runpod / 101,113 local; m≥101 needed for open R(4,t) at n≥202):
 
 0. Build one CP-SAT model: triangle-free N(0) (including cross-block).
-   - Optional: apply warm-start hint from 7e1 dumps if `RAMSEY_7E4_WARM=1`.
+   - **ROUND 1 seed-first: If warm bits loaded (RAMSEY_7E4_WARM=1), evaluate that assignment directly (no SAT solve). If K4_free and decide accepts → emit. Else proceed to CEGIS with warm as AddHint.**
 1. **Round r=1,2,...** until `RAMSEY_7E4_ROUNDS` or `RAMSEY_7E4_POOL_WALL` seconds.
 2. Solve **feasibility** (seeded). NOT maximize |S|. Cuts make the next solve a new point.
 3. `INFEASIBLE` → every remaining triangle-free (S0,S1) was cut. Next m.
@@ -141,6 +141,7 @@ hit-I clause. They are not the same.
 | `RAMSEY_7E4_MIS` | 8 s | 25 s | Full-graph decide per round |
 | `RAMSEY_7E4_TRI_FIX` | 12 | 24 | Triangle-repair budget per round |
 | `RAMSEY_7E4_WARM` | 0 | 0 | Load warm-starts from `data/phase7/7e1/` if =1 |
+| `RAMSEY_7E4_WARM_RADIUS` | 0 | 0 | Reserved for future warm-start radius expansion |
 
 Env overrides:
 

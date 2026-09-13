@@ -338,10 +338,11 @@ def extract_is_full_graph(nbr: list[int], t: int, seconds: float = 2.0) -> list[
     return result if result else None
 
 
-def solve_two_block_model(model, xs, m: int, seconds: float, seed: int = 0) -> tuple[str, list[int] | None, float]:
+def solve_two_block_model(model, xs, m: int, seconds: float, seed: int = 0, warm_bits: list[int] | None = None) -> tuple[str, list[int] | None, float]:
     """Solve the two-block model and return (status, bits, elapsed).
     
     Returns feasible or random solution (NOT maximize |S|).
+    If warm_bits provided, use as AddHint (seed-first).
     """
     try:
         from ortools.sat.python import cp_model
@@ -352,6 +353,12 @@ def solve_two_block_model(model, xs, m: int, seconds: float, seed: int = 0) -> t
     solver.parameters.max_time_in_seconds = float(seconds)
     solver.parameters.num_search_workers = int(__import__("os").environ.get("RAMSEY_SAT_WORKERS", "8"))
     solver.parameters.random_seed = int(seed) & 0x7FFFFFFF
+    
+    # Apply warm-start hint if provided
+    if warm_bits is not None:
+        free = free_bit_index(m)
+        for i in range(min(len(warm_bits), 2 * free)):
+            solver.AddHint(xs[i], int(warm_bits[i]))
     
     t0 = time.perf_counter()
     status = solver.Solve(model)

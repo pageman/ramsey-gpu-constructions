@@ -1204,6 +1204,7 @@ def job_7e4() -> list[dict]:
     mis_lim = float(os.environ.get("RAMSEY_7E4_MIS", mis_default))
     tri_fix_cap = int(os.environ.get("RAMSEY_7E4_TRI_FIX", tri_fix_default))
     warm_start = os.environ.get("RAMSEY_7E4_WARM") == "1"
+    warm_radius = int(os.environ.get("RAMSEY_7E4_WARM_RADIUS", "0"))
     
     print(
         f"  [7e4] Look 4 / R(4,20)≥252 CEGIS on two-orbit (S0,S1) m={ms} "
@@ -1300,16 +1301,123 @@ def job_7e4() -> list[dict]:
                     else:
                         print(f"  [7e4] no K4-free 7e1 dumps found for m={m}", flush=True)
                 except Exception as e:
-                    print(f"  [7e4] warm-start scan failed: {e}", flush=True)        
+                    print(f"  [7e4] warm-start scan failed: {e}", flush=True)
+        
         model, xs, _ = build_triangle_free_two_block_model(m)
         
-        # Apply warm-start hint if available
+        # ROUND 1: If warm bits loaded, evaluate that assignment directly (seed-first)
         if warm_bits:
-            from ortools.sat.python import cp_model
-            for i, bit_val in enumerate(warm_bits):
-                if i < len(xs):
-                    model.AddHint(xs[i], int(bit_val))
-            print(f"  [7e4] applied warm-start hint: {sum(warm_bits)}/{len(warm_bits)} bits set", flush=True)
+            from .cegis_two_block import bits_to_s0_s1
+            from .kernels.cayley import two_block_adj
+            
+            print(f"  [7e4] ROUND 1 seed-first: evaluating warm bits directly", flush=True)
+            S0, S1 = bits_to_s0_s1(m, warm_bits)
+            
+            s0_arr = np.zeros(m, dtype=np.uint8)
+            s1_arr = np.zeros(m, dtype=np.uint8)
+            for d in S0:
+                s0_arr[d % m] = 1
+            for d in S1:
+                s1_arr[d % m] = 1
+            
+            adj = two_block_adj(s0_arr, s1_arr)
+            
+            if _k4_free_adj(adj):
+                nbr = _adj_nbr(adj)
+                greedy_alpha = greedy_mis(nbr)
+                deg_0 = int(adj[0].sum())
+                leftover = n - deg_0 - 1
+                
+                print(
+                    f"    [7e4] ROUND 1 warm |S0|={len(S0)} |S1|={len(S1)} deg(0)={deg_0} "
+                    f"leftover={leftover} K4_free=True greedyα={greedy_alpha}",
+                    flush=True,
+                )
+                
+                # Try decide_alpha_le for priority targets
+                for t_cell in priority_t:
+                    if greedy_alpha >= t_cell:
+                        print(
+                            f"    [7e4] ROUND 1 greedyα={greedy_alpha}≥{t_cell} — skip decide for t={t_cell}",
+                            flush=True,
+                        )
+                        continue
+                    
+                    dec = decide_alpha_le(nbr, target=t_cell, time_limit=mis_lim)
+                    
+                    print(
+                        f"    [7e4] ROUND 1 decide α≥{t_cell} found={dec['found']} "
+                        f"timeout={dec['timed_out']} exact={dec.get('exact')}",
+                        flush=True,
+                    )
+                    
+                    if not dec["found"] and dec.get("exact"):
+                        # Residual accept from warm-start
+                        mix = mixed_set_check(adj[0], t_cell, time_limit=min(20.0, mis_lim))
+                        cell_ok = bool(dec.get("exact") and mix.get("mixed_ok"))
+                        published = R4_LOWER.get(t_cell, 0)
+                        beats = cell_ok and n + 1 > published
+                        
+                        if beats:
+                            print(
+                                f"    [7e4] ROUND 1 warm CELL? R(4,{t_cell}) ≥ {n + 1}  "
+                                f"(published ≥ {published})  mixed_ok (seed-first)",
+                                flush=True,
+                            )
+                        else:
+                            print(
+                                f"    [7e4] ROUND 1 warm residual_only t={t_cell}  {mix.get('reason')} (seed-first)",
+                                flush=True,
+                            )
+                        
+                        # Emit decision record
+                        meta = {
+                            "construction_type": "block_circulant_two_orbit",
+                            "gpu_kernel": "7e4 two-orbit warm-start + decide α",
+                            "field": f"Z_2 × Z_{m}",
+                            "params": {
+                                "m": m,
+                                "n": n,
+                                "kind": "7e4_warm",
+                                "t_cell": t_cell,
+                                "k4_free": True,
+                                "rounds": 1,
+                                "cuts": 0,
+                                "S0": list(S0),
+                                "S1": list(S1),
+                            },
+                            "run001": "not_done",
+                        }
+                        from .certify_fast import certify_fast
+                        cert = certify_fast(adj, time_limit=0.05)
+                        pack = cert
+                        pack["exact"] = beats
+                        if not beats:
+                            pack["omega_exact"] = None
+                            pack["alpha_exact"] = None
+                        
+                        rec = emit_decision(adj[0] if adj.ndim == 2 else adj, meta, pack, "7e4", "R(4,t)")
+                        rec["exact"] = beats
+                        rows.append(rec)
+                        
+                        pool_done = "accept_warm" if beats else "residual_only_warm"
+                        write_status(job="7e4", state="done", graphs=len(rows), warm_seed_first=True)
+                        print(
+                            f"  [7e4] m={m} done={pool_done} (seed-first accepted) cuts=0",
+                            flush=True,
+                        )
+                        
+                        append_record({"job": "7e4", "m": m, "n": n, "done": pool_done, "cuts": 0})
+                        summary_path = dump_dir / f"m{m}_SUMMARY.json"
+                        summary = {"m": m, "n": n, "done": pool_done, "cuts": 0, "warm_seed_first": True}
+                        summary_path.write_text(json.dumps(summary, indent=2) + "\n")
+                        
+                        continue  # Next m
+                    
+                    break  # If found or timeout, proceed to CEGIS
+            else:
+                print(f"    [7e4] ROUND 1 warm K4_free=False — skip seed-first, proceed to CEGIS", flush=True)
+                warm_bits = None  # Don't use as hint if not K4-free
         
         t_pool = time.perf_counter()
         pool_done = "rounds"
@@ -1334,8 +1442,10 @@ def job_7e4() -> list[dict]:
                 break
             
             sat_budget = min(sat_lim, left)
+            # Use warm_bits as hint in round 1 only if available and K4-free
+            hint = warm_bits if (rnd == 1 and warm_bits is not None) else None
             status, bits, sat_s = solve_two_block_model(
-                model, xs, m, sat_budget, seed=20260912 + rnd + m_idx * 1000
+                model, xs, m, sat_budget, seed=20260912 + rnd + m_idx * 1000, warm_bits=hint
             )
             
             print(
@@ -1410,9 +1520,9 @@ def job_7e4() -> list[dict]:
                     model.Add(assignment_nogood(xs, m, bits))
                     break
                 
-                # Re-solve after triangle cut
+                # Re-solve after triangle cut (no warm-start hint)
                 status, bits, sat_s = solve_two_block_model(
-                    model, xs, m, min(sat_lim, left), seed=20260912 + rnd + m_idx * 1000 + tri_fix
+                    model, xs, m, min(sat_lim, left), seed=20260912 + rnd + m_idx * 1000 + tri_fix, warm_bits=None
                 )
                 print(f"    [7e4]   re-SAT {status} {sat_s:.3f}s after triangle-cut", flush=True)
                 
