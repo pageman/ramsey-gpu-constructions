@@ -355,10 +355,10 @@ def solve_two_block_model(model, xs, m: int, seconds: float, seed: int = 0, warm
     solver.parameters.random_seed = int(seed) & 0x7FFFFFFF
     
     # Apply warm-start hint if provided
-    if warm_bits is not None:
+    if warm_bits is not None and hasattr(model, 'AddHint'):
         free = free_bit_index(m)
         for i in range(min(len(warm_bits), 2 * free)):
-            solver.AddHint(xs[i], int(warm_bits[i]))
+            model.AddHint(xs[i], int(warm_bits[i]))
     
     t0 = time.perf_counter()
     status = solver.Solve(model)
