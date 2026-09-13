@@ -1305,6 +1305,10 @@ def job_7e4() -> list[dict]:
         
         model, xs, _ = build_triangle_free_two_block_model(m)
         
+        t_pool = time.perf_counter()
+        pool_done = "rounds"
+        cut_count = 0
+        
         # ROUND 1: If warm bits loaded, evaluate that assignment directly (seed-first)
         if warm_bits:
             from .cegis_two_block import bits_to_s0_s1
@@ -1335,6 +1339,7 @@ def job_7e4() -> list[dict]:
                 )
                 
                 # Try decide_alpha_le for priority targets
+                seed_first_cuts = 0
                 for t_cell in priority_t:
                     if greedy_alpha >= t_cell:
                         print(
@@ -1350,6 +1355,13 @@ def job_7e4() -> list[dict]:
                         f"timeout={dec['timed_out']} exact={dec.get('exact')}",
                         flush=True,
                     )
+                    
+                    if dec["timed_out"]:
+                        print(
+                            f"    [7e4] ROUND 1 timeout ≠ accept. Proceed to cold CEGIS (seed-first).",
+                            flush=True,
+                        )
+                        break
                     
                     if not dec["found"] and dec.get("exact"):
                         # Residual accept from warm-start
@@ -1382,7 +1394,7 @@ def job_7e4() -> list[dict]:
                                 "t_cell": t_cell,
                                 "k4_free": True,
                                 "rounds": 1,
-                                "cuts": 0,
+                                "cuts": seed_first_cuts,
                                 "S0": list(S0),
                                 "S1": list(S1),
                             },
@@ -1403,25 +1415,81 @@ def job_7e4() -> list[dict]:
                         pool_done = "accept_warm" if beats else "residual_only_warm"
                         write_status(job="7e4", state="done", graphs=len(rows), warm_seed_first=True)
                         print(
-                            f"  [7e4] m={m} done={pool_done} (seed-first accepted) cuts=0",
+                            f"  [7e4] m={m} done={pool_done} (seed-first accepted) cuts={seed_first_cuts}",
                             flush=True,
                         )
                         
-                        append_record({"job": "7e4", "m": m, "n": n, "done": pool_done, "cuts": 0})
+                        append_record({"job": "7e4", "m": m, "n": n, "done": pool_done, "cuts": seed_first_cuts})
                         summary_path = dump_dir / f"m{m}_SUMMARY.json"
-                        summary = {"m": m, "n": n, "done": pool_done, "cuts": 0, "warm_seed_first": True}
+                        summary = {"m": m, "n": n, "done": pool_done, "cuts": seed_first_cuts, "warm_seed_first": True}
                         summary_path.write_text(json.dumps(summary, indent=2) + "\n")
                         
                         continue  # Next m
                     
-                    break  # If found or timeout, proceed to CEGIS
+                    if dec["found"]:
+                        # Extract IS witness and add cut (same path as main CEGIS loop)
+                        from .cegis_two_block import extract_is_full_graph, is_cut_two_block_lits, verify_is_independent_full
+                        
+                        I = extract_is_full_graph(nbr, t_cell, seconds=min(2.0, mis_lim))
+                        
+                        if not I:
+                            print(
+                                f"    [7e4] ROUND 1 found=True but witness extract failed (target={t_cell}). "
+                                "Proceed to cold CEGIS (seed-first).",
+                                flush=True,
+                            )
+                            break
+                        
+                        ok_ind = verify_is_independent_full(adj, I)
+                        print(
+                            f"    [7e4] ROUND 1 witness |I|={len(I)} independent={ok_ind} "
+                            f"I[:16]={I[:16]}{'…' if len(I) > 16 else ''}",
+                            flush=True,
+                        )
+                        
+                        if not ok_ind or len(I) < t_cell:
+                            print(f"    [7e4] ROUND 1 witness failed check — proceed to cold CEGIS (seed-first).", flush=True)
+                            break
+                        
+                        lits = is_cut_two_block_lits(m, I)
+                        
+                        if not lits:
+                            print(
+                                f"    [7e4] ROUND 1 empty cut — free bits cannot hit I. "
+                                "Proceed to cold CEGIS (seed-first).",
+                                flush=True,
+                            )
+                            break
+                        
+                        print(
+                            f"    [7e4] ROUND 1 IS-CUT t={t_cell} |lits|={len(lits)} (seed-first reject)",
+                            flush=True,
+                        )
+                        model.Add(sum(xs[i] for i in lits) >= 1)
+                        seed_first_cuts += 1
+                        total_cuts += 1
+                        cut_count += 1
+                        
+                        write_status(
+                            job="7e4",
+                            state="running",
+                            m=m,
+                            round="seed_first",
+                            cuts=total_cuts,
+                            ms_done=m_idx,
+                        )
+                        # Continue to next priority t
+                
+                # If seed-first added cuts, proceed to cold CEGIS with those constraints
+                if seed_first_cuts > 0:
+                    print(
+                        f"    [7e4] ROUND 1 seed-first added {seed_first_cuts} IS-cut(s). Proceed to cold CEGIS.",
+                        flush=True,
+                    )
+                    warm_bits = None  # Disable warm hint after seed-first reject
             else:
                 print(f"    [7e4] ROUND 1 warm K4_free=False — skip seed-first, proceed to CEGIS", flush=True)
                 warm_bits = None  # Don't use as hint if not K4-free
-        
-        t_pool = time.perf_counter()
-        pool_done = "rounds"
-        cut_count = 0
         
         for rnd in range(1, rounds + 1):
             left = pool_wall - (time.perf_counter() - t_pool)
