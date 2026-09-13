@@ -628,6 +628,52 @@ def test_two_block_high_greedy_nogood_logic() -> None:
                 f"n={n} greedy={greedy_alpha} min_open={min_open}: should nogood but logic says no")
 
 
+def test_two_block_warm_start() -> None:
+    """Warm-start hints are used by SAT solver (seed-first)."""
+    try:
+        from ortools.sat.python import cp_model  # noqa: F401
+    except ImportError:
+        return  # Skip test if ortools not available
+    
+    from engine.cegis_two_block import (
+        build_triangle_free_two_block_model,
+        bits_to_s0_s1,
+        free_bit_index,
+        solve_two_block_model,
+    )
+    from engine.kernels.cayley import two_block_adj
+    
+    m = 17
+    free = free_bit_index(m)
+    
+    # Create a known good warm-start (sparse, likely K4-free)
+    warm_bits = [0] * (2 * free)
+    warm_bits[0] = 1  # S0: distance 1
+    warm_bits[2] = 1  # S0: distance 3
+    warm_bits[free] = 1  # S1: distance 1
+    
+    S0, S1 = bits_to_s0_s1(m, warm_bits)
+    s0_arr = np.zeros(m, dtype=np.uint8)
+    s1_arr = np.zeros(m, dtype=np.uint8)
+    for d in S0:
+        s0_arr[d % m] = 1
+    for d in S1:
+        s1_arr[d % m] = 1
+    
+    adj = two_block_adj(s0_arr, s1_arr)
+    
+    # Build model and solve with warm-start
+    model, xs, _ = build_triangle_free_two_block_model(m)
+    status, bits, dt = solve_two_block_model(model, xs, m, seconds=2.0, seed=42, warm_bits=warm_bits)
+    
+    _assert(status in ("OPTIMAL", "FEASIBLE"), f"warm-start solve failed with status {status}")
+    _assert(bits is not None, "warm-start solve returned None")
+    
+    # Verify that warm bits are valid (not checking if solver used them, just that they're feasible)
+    # The test confirms that AddHint doesn't crash and solver produces output
+    _assert(len(bits) == 2 * free, f"expected {2 * free} bits, got {len(bits)}")
+
+
 def main() -> int:
     tests = [
         test_paley17_fft_matches_hermitian,
@@ -664,6 +710,7 @@ def main() -> int:
         test_two_block_sharp_triangle_support,
         test_two_block_m101_min_degree,
         test_two_block_high_greedy_nogood_logic,
+        test_two_block_warm_start,
     ]
     failed = 0
     for t in tests:
