@@ -61,6 +61,27 @@ m to floor(m/2) per block. S_b[0]=0 by construction.
 Total free bits: 2 * floor(m/2). At m=126, that's 2×63=126 free bits (vs
 251²/2 ≈ 31k for a Yu pool at p=251).
 
+### Warm-starts from 7e1
+
+When `RAMSEY_7E4_WARM=1`, the job scans `data/phase7/7e1/` for dumps matching
+`m{m}_r{restart}.json` (where restart is an integer). It prefers K4-free dumps
+with the lowest greedy α, then converts (S0, S1) arrays to free bits via
+`s0_s1_to_bits` and hints CP-SAT with `model.AddHint`. Expected dump schema:
+
+```json
+{
+  "m": 126,
+  "n": 252,
+  "restart": 0,
+  "s0": [0, 1, 0, ...],  // m-length indicator array or distance list
+  "s1": [0, 0, 1, ...],
+  "k4_free": true,
+  "greedy_alpha": 18
+}
+```
+
+If no dumps exist or none match, the job skips warm-start cleanly.
+
 ---
 
 ## 3. The cut (hitting clause on free bits)
@@ -83,11 +104,15 @@ be true.
 For each m in `RAMSEY_7E4_M` (default 126,128 runpod / 101,113 local; m≥101 needed for open R(4,t) at n≥202):
 
 0. Build one CP-SAT model: triangle-free N(0) (including cross-block).
+   - Optional: apply warm-start hint from 7e1 dumps if `RAMSEY_7E4_WARM=1`.
 1. **Round r=1,2,...** until `RAMSEY_7E4_ROUNDS` or `RAMSEY_7E4_POOL_WALL` seconds.
 2. Solve **feasibility** (seeded). NOT maximize |S|. Cuts make the next solve a new point.
 3. `INFEASIBLE` → every remaining triangle-free (S0,S1) was cut. Next m.
 4. `UNKNOWN` → SAT timeout. **No cut.** Next m.
-5. If NOT K4-free → nogood (S0,S1). Next round.
+5. **Triangle repair loop** (lazy CEGIS, up to `RAMSEY_7E4_TRI_FIX` iterations):
+   - If NOT K4-free → find triangle support bits → add triangle cut → re-solve.
+   - If still NOT K4-free after cap → nogood (S0,S1). Next round.
+   - If pool_wall exhausted during repair → nogood. Next m.
 6. Greedy α on full graph.
 7. For each t in priority list (20, 21, then other open):
    - `decide_alpha_le` target t, budget `RAMSEY_7E4_MIS` seconds.
@@ -114,6 +139,7 @@ hit-I clause. They are not the same.
 | `RAMSEY_7E4_SAT` | 8 s | 30 s | Max SAT wall per round |
 | `RAMSEY_7E4_POOL_WALL` | 20 s | 90 s | Max wall per m (all rounds) |
 | `RAMSEY_7E4_MIS` | 8 s | 25 s | Full-graph decide per round |
+| `RAMSEY_7E4_TRI_FIX` | 12 | 24 | Triangle-repair budget per round |
 | `RAMSEY_7E4_WARM` | 0 | 0 | Load warm-starts from `data/phase7/7e1/` if =1 |
 
 Env overrides:
@@ -176,16 +202,43 @@ gcc -O3 -shared -fPIC -fopenmp -o engine/kernels/native_decide.so engine/kernels
 
 ## 7. Local wiring (Mac or pod, not the hunt)
 
+### Without 7e1 warm-starts (basic wiring)
+
 ```bash
 cd /workspace/ramsey-gpu-constructions
 python3 engine/test_kernels.py
-RAMSEY_FORCE_7=1 RAMSEY_7E4_M=101 RAMSEY_7E4_CUTS=3 python3 -u -m engine.cli --job 7e4 --scale local
+RAMSEY_FORCE_7=1 RAMSEY_7E4_M=101 RAMSEY_7E4_CUTS=3 RAMSEY_7E4_TRI_FIX=12 python3 -u -m engine.cli --job 7e4 --scale local
 ```
 
-Local is **m=101,113 (default) or override with M=101; 4 rounds, 5 cuts cap, 20 s/m**.
-Note: m=17 will skip (no open R(4,t) cells at n=34). It checks wiring
-(triangle-cuts, leftover-IS-cuts). It will not mint 252. Do not read a local
+Local default is **m=101,113; 4 rounds, 5 cuts cap, 12 tri_fix, 20 s/m**.
+Note: m=17 will skip (no open R(4,t) cells at n=34). It checks wiring(triangle-cuts, leftover-IS-cuts). It will not mint 252. Do not read a local
 `graphs=0` as the runpod result.
+
+### With 7e1 warm-starts (recommended for m=126)
+
+If you have 7e1 dumps at `data/phase7/7e1/m126_r*.json`:
+
+```bash
+cd /workspace/ramsey-gpu-constructions
+RAMSEY_FORCE_7=1 RAMSEY_7E4_M=126 RAMSEY_7E4_WARM=1 RAMSEY_7E4_CUTS=8 RAMSEY_7E4_ROUNDS=6 RAMSEY_7E4_TRI_FIX=16 python3 -u -m engine.cli --job 7e4 --scale local
+```
+
+This will:
+- Load K4-free (S0,S1) from a 7e1 dump as warm-start
+- Run 6 rounds with higher triangle-repair budget (16 instead of 4)
+- Attempt to reach K4_free=True and call decide_alpha_le
+
+Expected log lines:
+```
+  [7e4] loaded warm-start from m126_r0.json (restart=0, K4_free=True, greedyα=18)
+  [7e4] applied warm-start hint: 42/126 bits set
+  ...
+    [7e4]   |S0|=21 |S1|=18 deg(0)=67 leftover=184 K4_free=True greedyα=18
+    [7e4]   decide α≥20 found=False timeout=False exact=True backend=...
+```
+
+If you don't have 7e1 dumps, job_7e1 must be run first, or accept that m=126
+local smoke without warm-starts may hit triangle-repair treadmill.
 
 ---
 
@@ -227,11 +280,15 @@ You want:
 | `== job 7e4  scale=runpod  device=cuda:NVIDIA A40` | CLI started | nothing |
 | `HALT file — skip` | `data/phase7.halt` and no `RAMSEY_FORCE_7` | export FORCE, relaunch once |
 | `ortools missing` | no CP-SAT | pip install, relaunch once |
-| `Look 4 / R(4,20)≥252 CEGIS` | banner. Confirm `NOT maximize \|S\|` | if you see maximize, wrong job |
+| `Look 4 / R(4,20)≥252 CEGIS` | banner. Confirm `NOT maximize \|S\|` and `tri_fix_cap` | if you see maximize, wrong job |
+| `loaded warm-start from ...` | 7e1 dump found and applied | warm-start working |
+| `no K4-free 7e1 dumps found` | no warm-start available | expected if 7e1 not run |
 | `skip m=... n=>256` | referee gate (decide_alpha n≤256) | expected |
 | `skip m=... no open R(4,t)` | n+1 does not beat `R4_LOWER` | expected |
 | `m=126 n=252 open_t=[20, 21]` | a real m | watch rounds |
-| `NOT K4-free — nogood` | model produced a K4 | expected; try next round |
+| `N(0) triangle fix=X/Y TRIANGLE-CUT` | lazy triangle repair (X of Y budget) | expected during repair |
+| `triangle-repair cap hit (Y)` | hit `RAMSEY_7E4_TRI_FIX` cap, nogood | expected; raised from 4 to 12/24 |
+| `pool_wall exhausted during triangle-repair` | time limit during repair | nogood, next m |
 | `round r SAT INFEASIBLE` | cuts exhausted free bits | not a cell; next m |
 | `SAT UNKNOWN/timeout ≠ accept` | no bits, **no cut** | next m |
 | `greedyα=... ≥ t` | skip decide for this t | greedy already rejected |
