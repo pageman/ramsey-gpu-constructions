@@ -134,7 +134,7 @@ hit-I clause. They are not the same.
 | Key | local | runpod | Meaning |
 |---|---|---|---|
 | `RAMSEY_7E4_M` | 101,113 | 126,128 | Comma-separated moduli (n=2m); m≥101 for open cells |
-| `RAMSEY_7E4_CUTS` | 5 | 20 | Cut cap per m |
+| `RAMSEY_7E4_CUTS` | 10 | 20 | Cut cap per m (raised from 5 to allow seed+CEGIS cuts) |
 | `RAMSEY_7E4_ROUNDS` | 4 | 16 | Max CEGIS rounds per m |
 | `RAMSEY_7E4_SAT` | 8 s | 30 s | Max SAT wall per round |
 | `RAMSEY_7E4_POOL_WALL` | 20 s | 90 s | Max wall per m (all rounds) |
@@ -142,6 +142,7 @@ hit-I clause. They are not the same.
 | `RAMSEY_7E4_TRI_FIX` | 12 | 24 | Triangle-repair budget per round |
 | `RAMSEY_7E4_WARM` | 0 | 0 | Load warm-starts from `data/phase7/7e1/` if =1 |
 | `RAMSEY_7E4_WARM_RADIUS` | 0 | 0 | Reserved for future warm-start radius expansion |
+| `RAMSEY_7E4_SEED_FIRST_T` | 20,21 | 20,21 | Comma-separated t values to cut during seed-first (empty = all priority_t) |
 
 Env overrides:
 
