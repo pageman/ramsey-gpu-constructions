@@ -1185,7 +1185,7 @@ def job_7e4() -> list[dict]:
         sat_default = 8.0
         pool_wall_default = 20.0
         mis_default = 8.0
-        tri_fix_default = 12
+        tri_fix_default = 16  # Raised from 12 for warm-basin retention (avoid instant nogood-cap after seed cuts)
     else:
         ms_default = "126,128"
         cuts_default = 20
@@ -1495,12 +1495,13 @@ def job_7e4() -> list[dict]:
                         # Continue to next priority t
                 
                 # If seed-first added cuts, proceed to cold CEGIS with those constraints
+                # Keep warm_bits for continued AddHint guidance in subsequent rounds
                 if seed_first_cuts > 0:
                     print(
-                        f"    [7e4] ROUND 1 seed-first added {seed_first_cuts} IS-cut(s). Proceed to cold CEGIS.",
+                        f"    [7e4] ROUND 1 seed-first added {seed_first_cuts} IS-cut(s). Proceed to cold CEGIS with warm hints retained.",
                         flush=True,
                     )
-                    warm_bits = None  # Disable warm hint after seed-first reject
+                    # Do NOT clear warm_bits here - keep for basin retention
             else:
                 print(f"    [7e4] ROUND 1 warm K4_free=False — skip seed-first, proceed to CEGIS", flush=True)
                 warm_bits = None  # Don't use as hint if not K4-free
@@ -1524,8 +1525,9 @@ def job_7e4() -> list[dict]:
                 break
             
             sat_budget = min(sat_lim, left)
-            # Use warm_bits as hint in round 1 only if available and K4-free
-            hint = warm_bits if (rnd == 1 and warm_bits is not None) else None
+            # Continue using warm_bits as hint throughout CEGIS for basin retention
+            # The IS-cuts prevent exact re-solve; hint biases toward warm neighborhood
+            hint = warm_bits if warm_bits is not None else None
             status, bits, sat_s = solve_two_block_model(
                 model, xs, m, sat_budget, seed=20260912 + rnd + m_idx * 1000, warm_bits=hint
             )
@@ -1602,7 +1604,7 @@ def job_7e4() -> list[dict]:
                     model.Add(assignment_nogood(xs, m, bits))
                     break
                 
-                # Re-solve after triangle cut (no warm-start hint)
+                # Re-solve after triangle cut (no warm hint - allow solver flexibility during repair)
                 status, bits, sat_s = solve_two_block_model(
                     model, xs, m, min(sat_lim, left), seed=20260912 + rnd + m_idx * 1000 + tri_fix, warm_bits=None
                 )

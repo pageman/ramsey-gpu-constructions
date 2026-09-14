@@ -66,7 +66,14 @@ Total free bits: 2 * floor(m/2). At m=126, that's 2×63=126 free bits (vs
 When `RAMSEY_7E4_WARM=1`, the job scans `data/phase7/7e1/` for dumps matching
 `m{m}_r{restart}.json` (where restart is an integer). It prefers K4-free dumps
 with the lowest greedy α, then converts (S0, S1) arrays to free bits via
-`s0_s1_to_bits` and hints CP-SAT with `model.AddHint`. Expected dump schema:
+`s0_s1_to_bits` and hints CP-SAT with `model.AddHint`. 
+
+**Basin retention (PR #TBD):** Warm hints are retained throughout the CEGIS loop,
+not just the seed-first round. This keeps the solver near the warm assignment's
+neighborhood (α≈9 / K4_free basin) even after IS-cuts reject the seed. The cuts
+prevent exact re-solve of the seed; the hint biases search toward warm literals.
+
+Expected dump schema:
 
 ```json
 {
@@ -139,10 +146,16 @@ hit-I clause. They are not the same.
 | `RAMSEY_7E4_SAT` | 8 s | 30 s | Max SAT wall per round |
 | `RAMSEY_7E4_POOL_WALL` | 20 s | 90 s | Max wall per m (all rounds) |
 | `RAMSEY_7E4_MIS` | 8 s | 25 s | Full-graph decide per round |
-| `RAMSEY_7E4_TRI_FIX` | 12 | 24 | Triangle-repair budget per round |
+| `RAMSEY_7E4_TRI_FIX` | 16 | 24 | Triangle-repair budget per round (raised from 12 for warm-basin retention) |
 | `RAMSEY_7E4_WARM` | 0 | 0 | Load warm-starts from `data/phase7/7e1/` if =1 |
 | `RAMSEY_7E4_WARM_RADIUS` | 0 | 0 | Reserved for future warm-start radius expansion |
 | `RAMSEY_7E4_SEED_FIRST_T` | 20,21 | 20,21 | Comma-separated t values to cut during seed-first (empty = all priority_t) |
+
+**When to raise TRI_FIX:** If cold CEGIS rounds after seed-first consistently hit 
+`triangle-repair cap` without reaching K4_free, increase `RAMSEY_7E4_TRI_FIX`. This
+gives the lazy triangle-repair loop more iterations to clean up N(0) violations
+before nogooding the assignment. Default 16 (local) / 24 (runpod) balances progress
+vs. treadmill risk.
 
 Env overrides:
 
