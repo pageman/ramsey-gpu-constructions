@@ -674,6 +674,53 @@ def test_two_block_warm_start() -> None:
     _assert(len(bits) == 2 * free, f"expected {2 * free} bits, got {len(bits)}")
 
 
+def test_two_block_warm_hints_retained_after_cut() -> None:
+    """Warm hints continue working after adding IS-cuts (basin retention)."""
+    try:
+        from ortools.sat.python import cp_model
+    except ImportError:
+        return  # Skip test if ortools not available
+    
+    from engine.cegis_two_block import (
+        assignment_nogood,
+        build_triangle_free_two_block_model,
+        bits_to_s0_s1,
+        free_bit_index,
+        solve_two_block_model,
+    )
+    
+    m = 17
+    free = free_bit_index(m)
+    
+    # Create warm-start
+    warm_bits = [0] * (2 * free)
+    warm_bits[0] = 1  # S0: distance 1
+    warm_bits[2] = 1  # S0: distance 3
+    warm_bits[free] = 1  # S1: distance 1
+    
+    # Build model
+    model, xs, _ = build_triangle_free_two_block_model(m)
+    
+    # First solve with warm-start
+    status1, bits1, _ = solve_two_block_model(model, xs, m, seconds=2.0, seed=42, warm_bits=warm_bits)
+    _assert(status1 in ("OPTIMAL", "FEASIBLE"), f"first solve failed with {status1}")
+    _assert(bits1 is not None, "first solve returned None")
+    
+    # Add nogood to reject this exact assignment (simulating IS-cut path)
+    model.Add(assignment_nogood(xs, m, bits1))
+    
+    # Solve again with same warm_bits - should work and find different solution
+    status2, bits2, _ = solve_two_block_model(model, xs, m, seconds=2.0, seed=43, warm_bits=warm_bits)
+    _assert(status2 in ("OPTIMAL", "FEASIBLE"), f"second solve with warm hint after cut failed: {status2}")
+    _assert(bits2 is not None, "second solve returned None after cut")
+    _assert(bits2 != bits1, "solver returned same assignment despite nogood cut")
+    
+    # Third solve without warm hint for comparison
+    status3, bits3, _ = solve_two_block_model(model, xs, m, seconds=2.0, seed=44, warm_bits=None)
+    _assert(status3 in ("OPTIMAL", "FEASIBLE"), f"third solve without hint failed: {status3}")
+    _assert(bits3 is not None, "third solve returned None")
+
+
 def main() -> int:
     tests = [
         test_paley17_fft_matches_hermitian,
@@ -711,6 +758,7 @@ def main() -> int:
         test_two_block_m101_min_degree,
         test_two_block_high_greedy_nogood_logic,
         test_two_block_warm_start,
+        test_two_block_warm_hints_retained_after_cut,
     ]
     failed = 0
     for t in tests:
