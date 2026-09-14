@@ -76,7 +76,7 @@ def s0_s1_to_bits(m: int, S0: list[int], S1: list[int]) -> list[int]:
     return bits
 
 
-def build_triangle_free_two_block_model(m: int) -> tuple:
+def build_triangle_free_two_block_model(m: int, warm_bits: list[int] | None = None, warm_radius: int = 0) -> tuple:
     """Build CP-SAT model for two-block circulant (lazy triangle repair).
     
     No hard triangle-free clauses up front (exponential at m=126). Use lazy CEGIS:
@@ -86,6 +86,9 @@ def build_triangle_free_two_block_model(m: int) -> tuple:
     For n=2m, deg(0) ≈ |S0| + |S1| (with inversion closure multiplicity).
     Leftover ≈ n - deg(0) - 1 = 2m - |S0| - |S1| - 1.
     To keep leftover ≲200, force deg(0) ≳ 2m - 201, i.e., enough free bits true.
+    
+    Optional warm_radius constraint: if warm_bits provided and warm_radius > 0,
+    constrain Hamming distance from warm_bits to ≤ warm_radius.
     
     Returns: (model, xs, m) where xs are the free-bit variables.
     """
@@ -111,10 +114,79 @@ def build_triangle_free_two_block_model(m: int) -> tuple:
     if min_bits > 0 and min_bits < 2 * free:
         model.Add(sum(xs) >= min_bits)
     
+    # Hamming ball constraint: if warm_radius > 0, stay within radius of warm_bits
+    if warm_bits is not None and warm_radius > 0:
+        free = free_bit_index(m)
+        if len(warm_bits) >= 2 * free:
+            # Hamming distance = number of flipped bits
+            # For bit i: flipped if (warm[i]=0 and x[i]=1) or (warm[i]=1 and x[i]=0)
+            # Count: sum((1-warm[i])*x[i] + warm[i]*(1-x[i])) <= radius
+            flips = []
+            for i in range(2 * free):
+                w = int(warm_bits[i])
+                if w == 0:
+                    flips.append(xs[i])  # Flip if we set it to 1
+                else:
+                    flips.append(1 - xs[i])  # Flip if we set it to 0
+            model.Add(sum(flips) <= int(warm_radius))
+    
     # Do NOT maximize |S0|+|S1| as the night objective
     # Feasibility mode with lower bound is the bias
     
     return model, xs, m
+
+
+class ModelState:
+    """Track accumulated constraints to rebuild model after MODEL_INVALID."""
+    def __init__(self, m: int):
+        self.m = m
+        self.triangle_cuts: list[list[int]] = []  # List of support bit indices
+        self.is_cuts: list[list[int]] = []  # List of IS cut lits
+        self.nogoods: list[list[int]] = []  # List of nogood bit assignments
+    
+    def add_triangle_cut(self, support: list[int]):
+        """Record a triangle cut: at most len(support)-1 of support can be true."""
+        self.triangle_cuts.append(support[:])
+    
+    def add_is_cut(self, lits: list[int]):
+        """Record an IS cut: at least one of lits must be true."""
+        self.is_cuts.append(lits[:])
+    
+    def add_nogood(self, bits: list[int]):
+        """Record a nogood: not this exact assignment."""
+        self.nogoods.append(bits[:])
+    
+    def rebuild_model(self, warm_bits: list[int] | None = None, warm_radius: int = 0) -> tuple:
+        """Rebuild model with all accumulated constraints.
+        
+        Returns: (model, xs, m)
+        """
+        model, xs, m = build_triangle_free_two_block_model(self.m, warm_bits, warm_radius)
+        
+        # Re-add all triangle cuts
+        for support in self.triangle_cuts:
+            if len(support) >= 2:
+                model.Add(sum(xs[i] for i in support) <= len(support) - 1)
+        
+        # Re-add all IS cuts
+        for lits in self.is_cuts:
+            if lits:
+                model.Add(sum(xs[i] for i in lits) >= 1)
+        
+        # Re-add all nogoods
+        free = free_bit_index(m)
+        for bits in self.nogoods:
+            terms = []
+            for i in range(2 * free):
+                if i < len(bits):
+                    if bits[i]:
+                        terms.append(1 - xs[i])
+                    else:
+                        terms.append(xs[i])
+            if terms:
+                model.Add(sum(terms) >= 1)
+        
+        return model, xs, m
 
 
 def first_triangle_support_two_block(m: int, bits: list[int]) -> list[int] | None:
@@ -338,11 +410,95 @@ def extract_is_full_graph(nbr: list[int], t: int, seconds: float = 2.0) -> list[
     return result if result else None
 
 
-def solve_two_block_model(model, xs, m: int, seconds: float, seed: int = 0, warm_bits: list[int] | None = None) -> tuple[str, list[int] | None, float]:
+def is_repair_from_warm(
+    m: int,
+    warm_bits: list[int],
+    cut_lits: list[int],
+    max_flips: int = 5,
+    max_attempts: int = 8,
+) -> list[int] | None:
+    """IS-directed local repair: flip warm bits that participate in the cut to satisfy it.
+    
+    After seed-first extracts IS I and installs cut (sum(cut_lits) >= 1), start from 
+    warm_bits and flip minimal free bits in cut_lits to satisfy the cut while staying 
+    K4_free and maintaining low greedy α.
+    
+    Args:
+        m: modulus (n=2m)
+        warm_bits: original warm-start free bits
+        cut_lits: free-bit indices from is_cut_two_block_lits that must have ≥1 true
+        max_flips: maximum number of bits to flip per attempt
+        max_attempts: number of repair attempts
+    
+    Returns:
+        Repaired free bits if successful (K4_free + cut satisfied), else None
+    """
+    import random
+    from .kernels.cayley import two_block_adj
+    
+    free = free_bit_index(m)
+    if not cut_lits:
+        return None
+    
+    # Check if warm already satisfies cut (should not, but defensive)
+    if any(warm_bits[i] for i in cut_lits if i < len(warm_bits)):
+        # Already satisfies cut - return warm
+        return warm_bits[:]
+    
+    best_bits = None
+    best_greedy = float('inf')
+    
+    rng = random.Random(42)
+    
+    for attempt in range(max_attempts):
+        # Start from warm
+        bits = warm_bits[:]
+        
+        # Choose how many cut_lits to flip on (1 to max_flips, prefer fewer)
+        n_flip = min(1 + attempt // 2, max_flips, len(cut_lits))
+        
+        # Select random subset of cut_lits to flip on
+        flip_candidates = rng.sample(cut_lits, min(n_flip, len(cut_lits)))
+        
+        for lit_idx in flip_candidates:
+            if lit_idx < len(bits):
+                bits[lit_idx] = 1
+        
+        # Evaluate: K4_free + greedy α
+        S0, S1 = bits_to_s0_s1(m, bits)
+        
+        s0_arr = np.zeros(m, dtype=np.uint8)
+        s1_arr = np.zeros(m, dtype=np.uint8)
+        for d in S0:
+            s0_arr[d % m] = 1
+        for d in S1:
+            s1_arr[d % m] = 1
+        
+        adj = two_block_adj(s0_arr, s1_arr)
+        
+        # Check K4-free
+        from .phase7 import _k4_free_adj, _adj_nbr
+        if not _k4_free_adj(adj):
+            continue
+        
+        # Greedy α
+        nbr = _adj_nbr(adj)
+        greedy_alpha = greedy_mis_set(nbr)
+        gα = len(greedy_alpha)
+        
+        if gα < best_greedy:
+            best_greedy = gα
+            best_bits = bits[:]
+    
+    return best_bits
+
+
+def solve_two_block_model(model, xs, m: int, seconds: float, seed: int = 0, warm_bits: list[int] | None = None, warm_radius: int = 0) -> tuple[str, list[int] | None, float]:
     """Solve the two-block model and return (status, bits, elapsed).
     
     Returns feasible or random solution (NOT maximize |S|).
     If warm_bits provided, use as AddHint (seed-first).
+    If warm_radius > 0, constrain Hamming distance from warm_bits to ≤ warm_radius.
     """
     try:
         from ortools.sat.python import cp_model
