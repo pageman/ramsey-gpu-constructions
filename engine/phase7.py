@@ -1149,6 +1149,7 @@ def job_7e4() -> list[dict]:
     NOT --job 7c. NOT maximize |S|. NOT reopen 7c/pod-phase7.sh.
     """
     from .cegis_two_block import (
+        ModelState,
         assignment_nogood,
         bits_to_s0_s1,
         build_triangle_free_two_block_model,
@@ -1156,6 +1157,7 @@ def job_7e4() -> list[dict]:
         first_triangle_support_two_block,
         free_bit_index,
         is_cut_two_block_lits,
+        is_repair_from_warm,
         solve_two_block_model,
         verify_is_independent_full,
     )
@@ -1213,7 +1215,7 @@ def job_7e4() -> list[dict]:
     print(
         f"  [7e4] Look 4 / R(4,20)≥252 CEGIS on two-orbit (S0,S1) m={ms} "
         f"rounds≤{rounds} cuts_cap={cuts_cap} tri_fix_cap={tri_fix_cap} pool_wall={pool_wall}s sat={sat_lim}s mis={mis_lim}s  "
-        f"seed_first_t={seed_first_t_targets}  "
+        f"seed_first_t={seed_first_t_targets} warm_radius={warm_radius}  "
         f"NOT maximize |S|; learning=leftover-IS-cuts (NOT --job 7c)",
         flush=True,
     )
@@ -1308,11 +1310,14 @@ def job_7e4() -> list[dict]:
                 except Exception as e:
                     print(f"  [7e4] warm-start scan failed: {e}", flush=True)
         
-        model, xs, _ = build_triangle_free_two_block_model(m)
+        # Initialize ModelState for constraint tracking
+        model_state = ModelState(m)
+        model, xs, _ = build_triangle_free_two_block_model(m, warm_bits, warm_radius)
         
         t_pool = time.perf_counter()
         pool_done = "rounds"
         cut_count = 0
+        repaired_bits = None  # Track IS-repair result after seed-first
         
         # ROUND 1: If warm bits loaded, evaluate that assignment directly (seed-first)
         if warm_bits:
@@ -1480,6 +1485,7 @@ def job_7e4() -> list[dict]:
                             flush=True,
                         )
                         model.Add(sum(xs[i] for i in lits) >= 1)
+                        model_state.add_is_cut(lits)
                         seed_first_cuts += 1
                         total_cuts += 1
                         cut_count += 1
@@ -1494,14 +1500,85 @@ def job_7e4() -> list[dict]:
                         )
                         # Continue to next priority t
                 
-                # If seed-first added cuts, proceed to cold CEGIS with those constraints
-                # Keep warm_bits for continued AddHint guidance in subsequent rounds
+                # If seed-first added cuts, attempt IS-directed local repair
                 if seed_first_cuts > 0:
                     print(
-                        f"    [7e4] ROUND 1 seed-first added {seed_first_cuts} IS-cut(s). Proceed to cold CEGIS with warm hints retained.",
+                        f"    [7e4] ROUND 1 seed-first added {seed_first_cuts} IS-cut(s). "
+                        "Attempting IS-directed local repair from warm...",
                         flush=True,
                     )
-                    # Do NOT clear warm_bits here - keep for basin retention
+                    
+                    # Collect all IS-cut lits for repair
+                    all_cut_lits = []
+                    for lits in model_state.is_cuts:
+                        all_cut_lits.extend(lits)
+                    all_cut_lits = sorted(set(all_cut_lits))
+                    
+                    repaired_bits = is_repair_from_warm(
+                        m, warm_bits, all_cut_lits, max_flips=8, max_attempts=12
+                    )
+                    
+                    if repaired_bits:
+                        # Evaluate repaired bits
+                        S0_r, S1_r = bits_to_s0_s1(m, repaired_bits)
+                        s0_arr_r = np.zeros(m, dtype=np.uint8)
+                        s1_arr_r = np.zeros(m, dtype=np.uint8)
+                        for d in S0_r:
+                            s0_arr_r[d % m] = 1
+                        for d in S1_r:
+                            s1_arr_r[d % m] = 1
+                        adj_r = two_block_adj(s0_arr_r, s1_arr_r)
+                        
+                        if _k4_free_adj(adj_r):
+                            nbr_r = _adj_nbr(adj_r)
+                            greedy_alpha_r = greedy_mis(nbr_r)
+                            deg_0_r = int(adj_r[0].sum())
+                            leftover_r = n - deg_0_r - 1
+                            
+                            print(
+                                f"    [7e4] IS-REPAIR flipped={sum(1 for i, (a, b) in enumerate(zip(warm_bits, repaired_bits)) if a != b)} "
+                                f"|S0|={len(S0_r)} |S1|={len(S1_r)} deg(0)={deg_0_r} leftover={leftover_r} "
+                                f"K4_free=True greedyα={greedy_alpha_r}",
+                                flush=True,
+                            )
+                            
+                            # Use repaired bits as hint for cold CEGIS (replaces warm_bits)
+                            warm_bits = repaired_bits
+                            
+                            # Optionally re-evaluate decide on repaired assignment (seed-style check)
+                            # This is a quick sanity check; full CEGIS loop will continue
+                            for t_cell in priority_t[:2]:  # Check first 2 priority targets
+                                if greedy_alpha_r >= t_cell:
+                                    continue
+                                dec_r = decide_alpha_le(nbr_r, target=t_cell, time_limit=min(4.0, mis_lim))
+                                print(
+                                    f"    [7e4] IS-REPAIR decide α≥{t_cell} found={dec_r['found']} greedyα={greedy_alpha_r}",
+                                    flush=True,
+                                )
+                                if not dec_r["found"] and dec_r.get("exact"):
+                                    print(
+                                        f"    [7e4] IS-REPAIR seed-style accept for t={t_cell}. "
+                                        "Proceed to cold CEGIS with repaired warm-start.",
+                                        flush=True,
+                                    )
+                                    break
+                        else:
+                            print(
+                                "    [7e4] IS-REPAIR K4_free=False — skip repaired hint, proceed to cold CEGIS with original warm",
+                                flush=True,
+                            )
+                            repaired_bits = None
+                    else:
+                        print(
+                            "    [7e4] IS-REPAIR failed — proceed to cold CEGIS with original warm hints",
+                            flush=True,
+                        )
+                    
+                    # Proceed to cold CEGIS with (repaired or original) warm hints
+                    print(
+                        f"    [7e4] ROUND 1 seed-first complete. Proceed to cold CEGIS with warm hints {'(repaired)' if repaired_bits else '(original)'}.",
+                        flush=True,
+                    )
             else:
                 print(f"    [7e4] ROUND 1 warm K4_free=False — skip seed-first, proceed to CEGIS", flush=True)
                 warm_bits = None  # Don't use as hint if not K4-free
@@ -1529,7 +1606,7 @@ def job_7e4() -> list[dict]:
             # The IS-cuts prevent exact re-solve; hint biases toward warm neighborhood
             hint = warm_bits if warm_bits is not None else None
             status, bits, sat_s = solve_two_block_model(
-                model, xs, m, sat_budget, seed=20260912 + rnd + m_idx * 1000, warm_bits=hint
+                model, xs, m, sat_budget, seed=20260912 + rnd + m_idx * 1000, warm_bits=hint, warm_radius=warm_radius
             )
             
             print(
@@ -1537,6 +1614,22 @@ def job_7e4() -> list[dict]:
                 f"(budget {sat_budget:.2f}s left {left:.2f}s)",
                 flush=True,
             )
+            
+            # Handle MODEL_INVALID by rebuilding
+            if status == "MODEL_INVALID":
+                print(
+                    f"    [7e4]   MODEL_INVALID after nogood/cut accumulation. Rebuilding model...",
+                    flush=True,
+                )
+                model, xs, _ = model_state.rebuild_model(warm_bits, warm_radius)
+                # Retry solve
+                status, bits, sat_s = solve_two_block_model(
+                    model, xs, m, sat_budget, seed=20260912 + rnd + m_idx * 1000, warm_bits=hint, warm_radius=warm_radius
+                )
+                print(
+                    f"    [7e4]   after rebuild: SAT {status} {sat_s:.3f}s",
+                    flush=True,
+                )
             
             if status == "INFEASIBLE":
                 print(
@@ -1579,6 +1672,7 @@ def job_7e4() -> list[dict]:
                         flush=True,
                     )
                     model.Add(assignment_nogood(xs, m, bits))
+                    model_state.add_nogood(bits)
                     break
                 
                 print(
@@ -1586,6 +1680,7 @@ def job_7e4() -> list[dict]:
                     flush=True,
                 )
                 model.Add(sum(xs[i] for i in support) <= len(support) - 1)
+                model_state.add_triangle_cut(support)
                 total_cuts += 1
                 
                 left = pool_wall - (time.perf_counter() - t_pool)
@@ -1595,6 +1690,7 @@ def job_7e4() -> list[dict]:
                         flush=True,
                     )
                     model.Add(assignment_nogood(xs, m, bits))
+                    model_state.add_nogood(bits)
                     break
                 if tri_fix >= tri_fix_cap:
                     print(
@@ -1602,13 +1698,26 @@ def job_7e4() -> list[dict]:
                         flush=True,
                     )
                     model.Add(assignment_nogood(xs, m, bits))
+                    model_state.add_nogood(bits)
                     break
                 
                 # Re-solve after triangle cut (no warm hint - allow solver flexibility during repair)
                 status, bits, sat_s = solve_two_block_model(
-                    model, xs, m, min(sat_lim, left), seed=20260912 + rnd + m_idx * 1000 + tri_fix, warm_bits=None
+                    model, xs, m, min(sat_lim, left), seed=20260912 + rnd + m_idx * 1000 + tri_fix, warm_bits=None, warm_radius=0
                 )
                 print(f"    [7e4]   re-SAT {status} {sat_s:.3f}s after triangle-cut", flush=True)
+                
+                # Handle MODEL_INVALID during triangle repair
+                if status == "MODEL_INVALID":
+                    print(
+                        f"    [7e4]   MODEL_INVALID during triangle repair. Rebuilding model...",
+                        flush=True,
+                    )
+                    model, xs, _ = model_state.rebuild_model(warm_bits, warm_radius)
+                    status, bits, sat_s = solve_two_block_model(
+                        model, xs, m, min(sat_lim, left), seed=20260912 + rnd + m_idx * 1000 + tri_fix, warm_bits=None, warm_radius=0
+                    )
+                    print(f"    [7e4]   after rebuild: SAT {status} {sat_s:.3f}s", flush=True)
                 
                 if status == "INFEASIBLE":
                     total_unsat += 1
@@ -1658,6 +1767,7 @@ def job_7e4() -> list[dict]:
                     flush=True,
                 )
                 model.Add(assignment_nogood(xs, m, bits))
+                model_state.add_nogood(bits)
                 continue
             
             # High-greedy check: if greedy_alpha ≥ all open t, nogood (cannot beat any cell)
@@ -1668,6 +1778,7 @@ def job_7e4() -> list[dict]:
                     flush=True,
                 )
                 model.Add(assignment_nogood(xs, m, bits))
+                model_state.add_nogood(bits)
                 continue
             
             # Try decide_alpha_le for priority targets
@@ -1695,6 +1806,7 @@ def job_7e4() -> list[dict]:
                     )
                     total_timeouts += 1
                     model.Add(assignment_nogood(xs, m, bits))
+                    model_state.add_nogood(bits)
                     found_witness = False
                     break
                 
@@ -1762,6 +1874,7 @@ def job_7e4() -> list[dict]:
                             flush=True,
                         )
                         model.Add(assignment_nogood(xs, m, bits))
+                        model_state.add_nogood(bits)
                         found_witness = False
                         break
                     
@@ -1775,6 +1888,7 @@ def job_7e4() -> list[dict]:
                     if not ok_ind or len(I) < t_cell:
                         print("    [7e4]   witness failed check — nogood (S0,S1), no cut.", flush=True)
                         model.Add(assignment_nogood(xs, m, bits))
+                        model_state.add_nogood(bits)
                         found_witness = False
                         break
                     
@@ -1797,6 +1911,7 @@ def job_7e4() -> list[dict]:
                         flush=True,
                     )
                     model.Add(sum(xs[i] for i in lits) >= 1)
+                    model_state.add_is_cut(lits)
                     cut_count += 1
                     total_cuts += 1
                     found_witness = True

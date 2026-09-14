@@ -68,10 +68,18 @@ When `RAMSEY_7E4_WARM=1`, the job scans `data/phase7/7e1/` for dumps matching
 with the lowest greedy α, then converts (S0, S1) arrays to free bits via
 `s0_s1_to_bits` and hints CP-SAT with `model.AddHint`. 
 
-**Basin retention (PR #TBD):** Warm hints are retained throughout the CEGIS loop,
+**Basin retention (PR #10 + PR #11):** Warm hints are retained throughout the CEGIS loop,
 not just the seed-first round. This keeps the solver near the warm assignment's
 neighborhood (α≈9 / K4_free basin) even after IS-cuts reject the seed. The cuts
 prevent exact re-solve of the seed; the hint biases search toward warm literals.
+
+**IS-directed local repair (PR #11):** After seed-first extracts an independent set I for
+primary target t (20 or 21) and adds the IS-cut, the system attempts IS-directed local
+repair: starting from warm free-bits, it flips bits that participate in hitting I (the cut
+literals) to satisfy the cut while staying K4_free and maintaining low greedy α. This
+surgical flip moves away from the rejected seed toward a nearby K4_free assignment that
+satisfies the cut, rather than re-attracting to the reject. The repaired assignment (if
+successful) replaces warm_bits as the hint for cold CEGIS rounds.
 
 Expected dump schema:
 
@@ -148,7 +156,7 @@ hit-I clause. They are not the same.
 | `RAMSEY_7E4_MIS` | 8 s | 25 s | Full-graph decide per round |
 | `RAMSEY_7E4_TRI_FIX` | 16 | 24 | Triangle-repair budget per round (raised from 12 for warm-basin retention) |
 | `RAMSEY_7E4_WARM` | 0 | 0 | Load warm-starts from `data/phase7/7e1/` if =1 |
-| `RAMSEY_7E4_WARM_RADIUS` | 0 | 0 | Reserved for future warm-start radius expansion |
+| `RAMSEY_7E4_WARM_RADIUS` | 0 | 0 | Hamming-ball radius around warm bits for cold rounds (0=off; suggest 10-20 for local smoke) |
 | `RAMSEY_7E4_SEED_FIRST_T` | 20,21 | 20,21 | Comma-separated t values to cut during seed-first (empty = all priority_t) |
 
 **When to raise TRI_FIX:** If cold CEGIS rounds after seed-first consistently hit 
@@ -156,6 +164,13 @@ hit-I clause. They are not the same.
 gives the lazy triangle-repair loop more iterations to clean up N(0) violations
 before nogooding the assignment. Default 16 (local) / 24 (runpod) balances progress
 vs. treadmill risk.
+
+**When to set WARM_RADIUS:** If warm-start CEGIS explores too far from the K4_free basin
+after IS-cuts, set `RAMSEY_7E4_WARM_RADIUS` to a small positive value (e.g. 10-20) to
+constrain cold-round SAT solutions within a Hamming ball of the warm assignment. This is a
+hard constraint: the model will only return solutions with ≤ radius bits flipped from warm.
+Default 0 = off (soft AddHint guidance only). Use for targeted local exploration when
+basin retention alone is insufficient.
 
 Env overrides:
 
@@ -304,6 +319,8 @@ You want:
 | `N(0) triangle fix=X/Y TRIANGLE-CUT` | lazy triangle repair (X of Y budget) | expected during repair |
 | `triangle-repair cap hit (Y)` | hit `RAMSEY_7E4_TRI_FIX` cap, nogood | expected; raised from 4 to 12/24 |
 | `pool_wall exhausted during triangle-repair` | time limit during repair | nogood, next m |
+| `MODEL_INVALID after nogood/cut accumulation. Rebuilding model...` | CP-SAT model corrupted after many constraints; rebuilding | automatic recovery (PR #11 fix) |
+| `IS-REPAIR flipped=k ... K4_free=... greedyα=...` | IS-directed local repair from warm after seed-first cuts | post-seed surgery to leave reject basin (PR #11) |
 | `round r SAT INFEASIBLE` | cuts exhausted free bits | not a cell; next m |
 | `SAT UNKNOWN/timeout ≠ accept` | no bits, **no cut** | next m |
 | `greedyα=... ≥ t` | skip decide for this t | greedy already rejected |
