@@ -385,6 +385,15 @@ runs, IS-cuts fire — **no CELL?** yet. Cold CEGIS mostly triangle-repair-cap o
 greedy-α≈126 nogood. **Wave D blocked** on warm-basin retention (keep hints /
 TRI_FIX diversity). Session note: [`SESSION-2026-09-13.md`](SESSION-2026-09-13.md).
 
+**Track A (Guided IS-repair, PR #13, 2026-09-15):** Attempted IS-directed local
+repair: after seed-first IS-cut, flip cut-lits (singles→pairs→hill-climb) from
+warm to satisfy cut while staying K4-free. Mac smoke on best warms (m126_r9,
+m128_r6): **instrument-negative**. Every cut-lit flip destroys K4-freeness (0/62
+singles, 0/225 sampled pairs for m=126; 0/63, 0/225 for m=128). Repair returns
+None; cold CEGIS unchanged. Unit tests pass (logic correct; landscape is
+obstacle). **Wave D not recommended** with current warms + guided repair.
+Scoreboard: [`LOOK4-7E4-SCOREBOARD.md`](LOOK4-7E4-SCOREBOARD.md).
+
 Implemented as **`phase7`** (`docs/JOB-PHASE7.md`) for Looks 3→1→6→2→4→5.
 That wrapper is **done**. Do not re-run it.
 
@@ -399,8 +408,18 @@ That wrapper is **done**. Do not re-run it.
 The number that is still true is **252**. The place it can increment is a
 **new \(S\)** plus a **finished accept**, not a new GPU kernel.
 
-**Next action (explicit, updated 2026-09-14):** Wave C **instrument-negative**
-(tip ~397b4c7, PR #11, all warms K4-free + found=True t=20). Do **not** start
-Wave D until guided IS-repair or new instrument. Do **not** rerun 7c / 7c1 / 7e.
-Scoreboard: [`LOOK4-7E4-SCOREBOARD.md`](LOOK4-7E4-SCOREBOARD.md). Three-track plan:
-[`superpowers/plans/2026-09-14-look4-three-track.md`](superpowers/plans/2026-09-14-look4-three-track.md).
+**Next action (explicit after Track A instrument-negative, 2026-09-15):** 
+Do **not** schedule Wave D pod night with current warms (m126_r9, m128_r6) and 
+guided repair (instrument-negative on both). Do **not** rerun 7c / 7c1 / 7e 
+(wrong job). Do **not** continue another repair-knob sweep (TRI_FIX, WARM_RADIUS, 
+hill-climb rounds) — the landscape is the obstacle, not the search tuning.
+
+**Next increment must be:**
+- **New warm** (7e.1 continuation, different ILS, or another m) with decide 
+  found=False (full-graph α<t), **or**
+- **New instrument** for Look 4 (structured two-orbit neighbor enumeration, 
+  block-circulant SAT as in Wesley 2024/2025, Coniglio-style IP on two-block 
+  pools), **or**
+- **Different Look** (1, 2, 3, 5, or 6 from §1–2 above)
+
+Wave D (overnight pod with current method + current warms) is not the next step.
