@@ -1,8 +1,8 @@
 {
   "scoreboard": "look4-7e4-instrument-negative",
   "updated": "2026-09-15",
-  "repo_tip": "3853007",
-  "pr_range": "2-13",
+  "repo_tip": "e95d67d",
+  "pr_range": "2-14",
   "status": "INSTRUMENT_NEGATIVE",
   "published_cell": {
     "R(4,20)": 252,
@@ -21,7 +21,7 @@
         "m": 126,
         "n": 252,
         "k4_free": true,
-        "greedy_alpha": 18,
+        "greedy_alpha": 9,
         "decide_t20": "found=True",
         "decide_t21": "found=True",
         "repair_result": {
@@ -38,7 +38,7 @@
         "m": 128,
         "n": 256,
         "k4_free": true,
-        "greedy_alpha": 17,
+        "greedy_alpha": 5,
         "decide_t20": "found=True",
         "decide_t21": "found=True",
         "repair_result": {
@@ -110,7 +110,8 @@
     {"pr": 9, "summary": "Public docs update for session 2026-09-12/13"},
     {"pr": 10, "summary": "Retain warm hints throughout CEGIS (basin retention)"},
     {"pr": 11, "summary": "IS-directed local repair + WARM_RADIUS constraint + MODEL_INVALID fix"},
-    {"pr": 13, "summary": "Replace random IS-repair with guided search (singles->pairs->hill-climb) - INSTRUMENT-NEGATIVE"}
+    {"pr": 13, "summary": "Replace random IS-repair with guided search (singles->pairs->hill-climb) - INSTRUMENT-NEGATIVE"},
+    {"pr": 14, "summary": "Track A negative scoreboard (update scoreboard after PR #13 Mac smoke result)"}
   ],
   "references": {
     "job_contract": "docs/JOB-7E4.md",
