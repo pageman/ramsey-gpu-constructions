@@ -1,22 +1,122 @@
 {
-  "date": "2026-09-14",
-  "tip": "397b4c7",
-  "pr": 11,
-  "device": "Mac",
-  "verdict": "instrument_negative",
-  "graphs": 0,
-  "claim": "R(4,20) >= 252 unchanged",
-  "method": "7e4 Wave C stack: seed-first, IS-cuts, AddHint, WARM_RADIUS, random IS-REPAIR, MODEL_INVALID rebuild",
-  "smoke_logs": [
-    "wave-c-smoke-m126-isrepair",
-    "m128-warm-r15",
-    "m128-warm-r0",
-    "m126-128-warm"
+  "scoreboard": "look4-7e4-instrument-negative",
+  "updated": "2026-09-15",
+  "repo_tip": "3853007",
+  "pr_range": "2-13",
+  "status": "INSTRUMENT_NEGATIVE",
+  "published_cell": {
+    "R(4,20)": 252,
+    "R(4,21)": 252,
+    "source": "Yu 2608.18169v2"
+  },
+  "track_a_result": {
+    "track": "Guided IS-repair (PR #13)",
+    "status": "instrument_negative",
+    "date": "2026-09-15",
+    "test": "Mac smoke (no GPU)",
+    "command": "RAMSEY_7E4_M=126,128 RAMSEY_7E4_WARM=1 RAMSEY_7E4_WARM_RADIUS=0 RAMSEY_7E4_ROUNDS=6 RAMSEY_7E4_TRI_FIX=16 RAMSEY_7E4_CUTS=8 RAMSEY_7E4_REPAIR_HILLCLIMB=30 python3.11 -m engine.cli --job 7e4",
+    "warms_tested": [
+      {
+        "warm": "m126_r9",
+        "m": 126,
+        "n": 252,
+        "k4_free": true,
+        "greedy_alpha": 18,
+        "decide_t20": "found=True",
+        "decide_t21": "found=True",
+        "repair_result": {
+          "union_cut_lits": 62,
+          "k4_free_singles": "0/62",
+          "cross_cut_pairs_sampled": "15x15=225",
+          "k4_free_pairs": "0/225",
+          "hill_climb_rounds": 30,
+          "conclusion": "Every cut-lit flip destroys K4-freeness"
+        }
+      },
+      {
+        "warm": "m128_r6",
+        "m": 128,
+        "n": 256,
+        "k4_free": true,
+        "greedy_alpha": 17,
+        "decide_t20": "found=True",
+        "decide_t21": "found=True",
+        "repair_result": {
+          "union_cut_lits": 63,
+          "k4_free_singles": "0/63",
+          "cross_cut_pairs_sampled": "15x15=225",
+          "k4_free_pairs": "0/225",
+          "hill_climb_rounds": 30,
+          "conclusion": "Every cut-lit flip destroys K4-freeness"
+        }
+      }
+    ],
+    "outcome": {
+      "graphs": 0,
+      "is_repair_failed": true,
+      "cold_cegis_behavior": "triangle-repair cap / MODEL_INVALID / greedy-alpha~m nogood",
+      "cell_unchanged": 252
+    },
+    "unit_tests": {
+      "file": "engine/test_warm_repair.py",
+      "passed": "7/7",
+      "note": "Repair logic correct; landscape is obstacle"
+    },
+    "log": {
+      "saved_as": "logs/wave-c/wave-c-smoke-guided-repair-3853007.log",
+      "in_repo": false
+    }
+  },
+  "reopen_criteria": {
+    "original": [
+      {
+        "id": 1,
+        "criterion": "Guided IS-repair from warm (surgical flip of cut-lits only)",
+        "status": "CLOSED",
+        "reason": "Instrument-negative for best warms m126_r9, m128_r6"
+      },
+      {
+        "id": 2,
+        "criterion": "New warm with t=20 found=False and residual accept (full-graph alpha<20)",
+        "status": "OPEN",
+        "note": "If 7e.1 or other generator produces warm with decide found=False"
+      },
+      {
+        "id": 3,
+        "criterion": "New instrument: true two-orbit local search beyond cut-lit flips",
+        "status": "OPEN",
+        "note": "E.g., structured neighbor enumeration, block-circulant SAT (Wesley), Coniglio-style IP"
+      }
+    ]
+  },
+  "next_action": {
+    "not_wave_d": true,
+    "not_gpu_overnight": true,
+    "reason": "Track A instrument-negative with current warms",
+    "recommendations": [
+      "New warm from 7e.1 continuation or different m with found=False",
+      "New instrument (structured two-orbit neighbor enumeration, block-circulant SAT, or two-block IP)",
+      "Different Look (1, 2, 3, 5, or 6 from WHERE-TO-LOOK.md)"
+    ]
+  },
+  "pull_requests": [
+    {"pr": 2, "summary": "Scaffolding + lazy triangle CEGIS + degree LB + sharp IS-cuts"},
+    {"pr": 3, "summary": "Stronger degree LB + greedy nogood + local M>=101"},
+    {"pr": 4, "summary": "Warm-start from 7e1 dumps + TRI_FIX cap raised"},
+    {"pr": 5, "summary": "Seed-first warm round"},
+    {"pr": 6, "summary": "Fix AddHint API (ortools 9.15)"},
+    {"pr": 7, "summary": "Seed-first reject installs IS-cut"},
+    {"pr": 8, "summary": "Seed-cut only primary t (20,21) + local cuts cap 5->10"},
+    {"pr": 9, "summary": "Public docs update for session 2026-09-12/13"},
+    {"pr": 10, "summary": "Retain warm hints throughout CEGIS (basin retention)"},
+    {"pr": 11, "summary": "IS-directed local repair + WARM_RADIUS constraint + MODEL_INVALID fix"},
+    {"pr": 13, "summary": "Replace random IS-repair with guided search (singles->pairs->hill-climb) - INSTRUMENT-NEGATIVE"}
   ],
-  "reopen_blocked": true,
-  "reopen_criteria": [
-    "Guided IS-repair yields K4_free cut-satisfying neighbor + cold decide found=False t=20",
-    "New warm with found=False t=20",
-    "New instrument"
-  ]
+  "references": {
+    "job_contract": "docs/JOB-7E4.md",
+    "waves_plan": "docs/JOB-7E4-PLAN.md",
+    "session_note": "docs/SESSION-2026-09-13.md",
+    "where_to_look": "docs/WHERE-TO-LOOK.md",
+    "campaign": "docs/PHASE7-CAMPAIGN.md"
+  }
 }
