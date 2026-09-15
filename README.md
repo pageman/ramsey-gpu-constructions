@@ -21,14 +21,20 @@ triangle-repair-cap or greedy-α≈126 nogood. **Wave D blocked on
 warm-basin retention** (keep hints / TRI_FIX diversity). Do **not** start
 overnight Wave D until warm-basin chase validates locally.
 
+**Look 4 scoreboard (2026-09-14):** Wave C **instrument-negative** (tip ~397b4c7,
+PR #11). All warms K4-free; all t=20 decides found=True. R(4,20)≥252 unchanged.
+See [`docs/LOOK4-7E4-SCOREBOARD.md`](docs/LOOK4-7E4-SCOREBOARD.md). Next ≠ Wave D
+(blocked on guided IS-repair or new instrument).
+
 Campaign write-ups: [`docs/A40-CAMPAIGN.md`](docs/A40-CAMPAIGN.md) ·
 [`docs/PHASE5-CAMPAIGN.md`](docs/PHASE5-CAMPAIGN.md) ·
 [`docs/PHASE7-CAMPAIGN.md`](docs/PHASE7-CAMPAIGN.md) ·
 [`docs/SESSION-2026-09-13.md`](docs/SESSION-2026-09-13.md). Inventory:
 [`docs/MANIFEST-2A-7C1.md`](docs/MANIFEST-2A-7C1.md). Replay:
 [`docs/REPRODUCING.md`](docs/REPRODUCING.md). Next search (7c1 done, 7e.1 dumps
-persist): [`docs/WHERE-TO-LOOK.md`](docs/WHERE-TO-LOOK.md) → **7e.4
-warm-basin → Wave D**, not another `--job 7c`, not more 7e.1.
+persist): [`docs/WHERE-TO-LOOK.md`](docs/WHERE-TO-LOOK.md) → **guided IS-repair
+or new instrument**, not Wave D (blocked), not another `--job 7c`, not more 7e.1.
+Wave C scoreboard: [`docs/LOOK4-7E4-SCOREBOARD.md`](docs/LOOK4-7E4-SCOREBOARD.md).
 
 ## A40 scoreboard (jobs 2a–7c1)
 

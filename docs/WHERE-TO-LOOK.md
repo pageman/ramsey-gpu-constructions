@@ -399,6 +399,8 @@ That wrapper is **done**. Do not re-run it.
 The number that is still true is **252**. The place it can increment is a
 **new \(S\)** plus a **finished accept**, not a new GPU kernel.
 
-**Next action (explicit):** Validate warm-basin retention locally (m=126 WARM=1)
-before scheduling Wave D pod night. Do **not** rerun 7c / 7c1 / 7e (wrong job).
-Do **not** rerun 7e.1 (dumps persist; next is 7e.4 after warm-basin chase).
+**Next action (explicit, updated 2026-09-14):** Wave C **instrument-negative**
+(tip ~397b4c7, PR #11, all warms K4-free + found=True t=20). Do **not** start
+Wave D until guided IS-repair or new instrument. Do **not** rerun 7c / 7c1 / 7e.
+Scoreboard: [`LOOK4-7E4-SCOREBOARD.md`](LOOK4-7E4-SCOREBOARD.md). Three-track plan:
+[`superpowers/plans/2026-09-14-look4-three-track.md`](superpowers/plans/2026-09-14-look4-three-track.md).
