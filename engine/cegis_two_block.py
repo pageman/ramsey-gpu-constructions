@@ -410,6 +410,52 @@ def extract_is_full_graph(nbr: list[int], t: int, seconds: float = 2.0) -> list[
     return result if result else None
 
 
+def _adj_nbr_local(adj) -> list[int]:
+    """Convert adjacency matrix to nbr list (local copy to avoid circular import)."""
+    n = int(adj.shape[0])
+    nbr = [0] * n
+    for i in range(n):
+        bits = 0
+        for j in np.flatnonzero(adj[i]):
+            bits |= 1 << int(j)
+        nbr[i] = bits
+    return nbr
+
+
+def _k4_free_adj_local(adj) -> bool:
+    """K4-free ⇔ every neighbourhood is triangle-free (local copy to avoid circular import)."""
+    n = int(adj.shape[0])
+    for v in range(n):
+        nb = [int(x) for x in np.flatnonzero(adj[v])]
+        for i in range(len(nb)):
+            a = nb[i]
+            for j in range(i + 1, len(nb)):
+                b = nb[j]
+                if adj[a, b]:
+                    for k in range(j + 1, len(nb)):
+                        c = nb[k]
+                        if adj[a, c] and adj[b, c]:
+                            return False
+    return True
+
+
+def _count_n0_triangles(adj) -> int:
+    """Count triangles in N(0). Returns number of triangles, not triple count."""
+    n = int(adj.shape[0])
+    nb = [int(x) for x in np.flatnonzero(adj[0])]
+    count = 0
+    for i in range(len(nb)):
+        a = nb[i]
+        for j in range(i + 1, len(nb)):
+            b = nb[j]
+            if adj[a, b]:
+                for k in range(j + 1, len(nb)):
+                    c = nb[k]
+                    if adj[a, c] and adj[b, c]:
+                        count += 1
+    return count
+
+
 def is_repair_from_warm(
     m: int,
     warm_bits: list[int],
@@ -417,56 +463,60 @@ def is_repair_from_warm(
     max_flips: int = 5,
     max_attempts: int = 8,
 ) -> list[int] | None:
-    """IS-directed local repair: flip warm bits that participate in the cut to satisfy it.
+    """Guided IS-directed repair: systematic search over cut-lit flips.
     
     After seed-first extracts IS I and installs cut (sum(cut_lits) >= 1), start from 
-    warm_bits and flip minimal free bits in cut_lits to satisfy the cut while staying 
-    K4_free and maintaining low greedy α.
+    warm_bits and systematically evaluate flipping cut lits to satisfy the cut while
+    staying K4_free and maintaining low greedy α.
+    
+    Strategy:
+    1. Exhaustive single cut-lit flips; score by K4_free (hard), min N(0) triangles,
+       min greedyα, min Hamming to warm
+    2. Best-first pairs among top singles by triangle delta
+    3. Optional short hill-climb on non-cut bits to kill triangles without undoing cut
+    4. Fixed: early-return removed (was returning warm unchanged if cut lit already true)
     
     Args:
         m: modulus (n=2m)
         warm_bits: original warm-start free bits
         cut_lits: free-bit indices from is_cut_two_block_lits that must have ≥1 true
-        max_flips: maximum number of bits to flip per attempt
-        max_attempts: number of repair attempts
+        max_flips: maximum number of bits to flip per attempt (unused in guided mode)
+        max_attempts: number of repair attempts (unused in guided mode)
     
     Returns:
         Repaired free bits if successful (K4_free + cut satisfied), else None
+    
+    Environment variables:
+        RAMSEY_7E4_REPAIR_SINGLES: max single-lit candidates to evaluate (default: all)
+        RAMSEY_7E4_REPAIR_PAIRS: max pair candidates to evaluate (default: 20)
+        RAMSEY_7E4_REPAIR_HILLCLIMB: hill-climb steps on non-cut bits (default: 0)
     """
-    import random
+    import os
     from .kernels.cayley import two_block_adj
     
     free = free_bit_index(m)
     if not cut_lits:
         return None
     
-    # Check if warm already satisfies cut (should not, but defensive)
-    if any(warm_bits[i] for i in cut_lits if i < len(warm_bits)):
-        # Already satisfies cut - return warm
-        return warm_bits[:]
+    # Environment knobs
+    max_singles = int(os.environ.get("RAMSEY_7E4_REPAIR_SINGLES", len(cut_lits)))
+    max_pairs = int(os.environ.get("RAMSEY_7E4_REPAIR_PAIRS", "20"))
+    hillclimb_steps = int(os.environ.get("RAMSEY_7E4_REPAIR_HILLCLIMB", "0"))
     
-    best_bits = None
-    best_greedy = float('inf')
+    # Phase 1: Exhaustive single cut-lit flips
+    # Score by: K4_free (hard), min N(0) triangles, min greedyα, min Hamming to warm
+    single_candidates = []
     
-    rng = random.Random(42)
-    
-    for attempt in range(max_attempts):
-        # Start from warm
+    for lit_idx in cut_lits[:max_singles]:
+        if lit_idx >= len(warm_bits):
+            continue
+        
+        # Flip this single lit
         bits = warm_bits[:]
+        bits[lit_idx] = 1
         
-        # Choose how many cut_lits to flip on (1 to max_flips, prefer fewer)
-        n_flip = min(1 + attempt // 2, max_flips, len(cut_lits))
-        
-        # Select random subset of cut_lits to flip on
-        flip_candidates = rng.sample(cut_lits, min(n_flip, len(cut_lits)))
-        
-        for lit_idx in flip_candidates:
-            if lit_idx < len(bits):
-                bits[lit_idx] = 1
-        
-        # Evaluate: K4_free + greedy α
+        # Evaluate
         S0, S1 = bits_to_s0_s1(m, bits)
-        
         s0_arr = np.zeros(m, dtype=np.uint8)
         s1_arr = np.zeros(m, dtype=np.uint8)
         for d in S0:
@@ -476,21 +526,155 @@ def is_repair_from_warm(
         
         adj = two_block_adj(s0_arr, s1_arr)
         
-        # Check K4-free
-        from .phase7 import _k4_free_adj, _adj_nbr
-        if not _k4_free_adj(adj):
+        # Hard constraint: K4-free
+        if not _k4_free_adj_local(adj):
             continue
         
-        # Greedy α
-        nbr = _adj_nbr(adj)
+        # Score: N(0) triangles, greedy α, Hamming distance
+        n0_triangles = _count_n0_triangles(adj)
+        nbr = _adj_nbr_local(adj)
         greedy_alpha = greedy_mis_set(nbr)
         gα = len(greedy_alpha)
+        hamming = sum(1 for i in range(len(warm_bits)) if warm_bits[i] != bits[i])
         
-        if gα < best_greedy:
-            best_greedy = gα
-            best_bits = bits[:]
+        single_candidates.append({
+            "lit": lit_idx,
+            "bits": bits,
+            "n0_triangles": n0_triangles,
+            "greedy_alpha": gα,
+            "hamming": hamming,
+        })
     
-    return best_bits
+    # If we found K4-free single-lit flips, pick the best
+    if single_candidates:
+        # Sort by: min N(0) triangles, min greedyα, min Hamming
+        single_candidates.sort(key=lambda x: (x["n0_triangles"], x["greedy_alpha"], x["hamming"]))
+        
+        best_single = single_candidates[0]
+        
+        # If best single has 0 N(0) triangles, return it immediately
+        if best_single["n0_triangles"] == 0:
+            return best_single["bits"]
+        
+        # Phase 2: Best-first pairs among top singles by triangle delta
+        # Select top singles by N(0) triangle reduction
+        top_singles = single_candidates[:min(len(single_candidates), max_pairs)]
+        
+        best_pair = None
+        best_pair_score = (best_single["n0_triangles"], best_single["greedy_alpha"], best_single["hamming"])
+        
+        for i, cand_i in enumerate(top_singles):
+            for j in range(i + 1, len(top_singles)):
+                cand_j = top_singles[j]
+                
+                # Flip both lits
+                bits = warm_bits[:]
+                bits[cand_i["lit"]] = 1
+                bits[cand_j["lit"]] = 1
+                
+                # Evaluate
+                S0, S1 = bits_to_s0_s1(m, bits)
+                s0_arr = np.zeros(m, dtype=np.uint8)
+                s1_arr = np.zeros(m, dtype=np.uint8)
+                for d in S0:
+                    s0_arr[d % m] = 1
+                for d in S1:
+                    s1_arr[d % m] = 1
+                
+                adj = two_block_adj(s0_arr, s1_arr)
+                
+                # Hard constraint: K4-free
+                if not _k4_free_adj_local(adj):
+                    continue
+                
+                # Score
+                n0_triangles = _count_n0_triangles(adj)
+                nbr = _adj_nbr_local(adj)
+                greedy_alpha = greedy_mis_set(nbr)
+                gα = len(greedy_alpha)
+                hamming = sum(1 for i in range(len(warm_bits)) if warm_bits[i] != bits[i])
+                
+                score = (n0_triangles, gα, hamming)
+                
+                # Better than best single?
+                if score < best_pair_score:
+                    best_pair_score = score
+                    best_pair = bits
+                    
+                    # If we found 0 N(0) triangles, return immediately
+                    if n0_triangles == 0:
+                        return best_pair
+        
+        # Return best pair if found, else best single
+        if best_pair is not None:
+            result_bits = best_pair
+        else:
+            result_bits = best_single["bits"]
+        
+        # Phase 3: Optional hill-climb on non-cut bits to kill triangles without undoing cut
+        if hillclimb_steps > 0:
+            non_cut_bits = [i for i in range(len(warm_bits)) if i not in cut_lits]
+            
+            current_bits = result_bits[:]
+            S0, S1 = bits_to_s0_s1(m, current_bits)
+            s0_arr = np.zeros(m, dtype=np.uint8)
+            s1_arr = np.zeros(m, dtype=np.uint8)
+            for d in S0:
+                s0_arr[d % m] = 1
+            for d in S1:
+                s1_arr[d % m] = 1
+            adj = two_block_adj(s0_arr, s1_arr)
+            current_n0_triangles = _count_n0_triangles(adj)
+            
+            for step in range(hillclimb_steps):
+                improved = False
+                
+                for bit_idx in non_cut_bits:
+                    # Try flipping this non-cut bit
+                    trial_bits = current_bits[:]
+                    trial_bits[bit_idx] = 1 - trial_bits[bit_idx]
+                    
+                    # Verify cut still satisfied
+                    if not any(trial_bits[i] for i in cut_lits if i < len(trial_bits)):
+                        continue
+                    
+                    # Evaluate
+                    S0, S1 = bits_to_s0_s1(m, trial_bits)
+                    s0_arr = np.zeros(m, dtype=np.uint8)
+                    s1_arr = np.zeros(m, dtype=np.uint8)
+                    for d in S0:
+                        s0_arr[d % m] = 1
+                    for d in S1:
+                        s1_arr[d % m] = 1
+                    
+                    adj = two_block_adj(s0_arr, s1_arr)
+                    
+                    # Hard constraint: K4-free
+                    if not _k4_free_adj_local(adj):
+                        continue
+                    
+                    trial_n0_triangles = _count_n0_triangles(adj)
+                    
+                    # Accept if improvement
+                    if trial_n0_triangles < current_n0_triangles:
+                        current_bits = trial_bits
+                        current_n0_triangles = trial_n0_triangles
+                        improved = True
+                        
+                        # If we killed all triangles, stop
+                        if current_n0_triangles == 0:
+                            return current_bits
+                
+                # If no improvement in a full pass, stop hill-climb
+                if not improved:
+                    break
+            
+            result_bits = current_bits
+        
+        return result_bits
+    
+    # No K4-free repair found
+    return None
 
 
 def solve_two_block_model(model, xs, m: int, seconds: float, seed: int = 0, warm_bits: list[int] | None = None, warm_radius: int = 0) -> tuple[str, list[int] | None, float]:

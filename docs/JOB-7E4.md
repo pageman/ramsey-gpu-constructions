@@ -73,13 +73,26 @@ not just the seed-first round. This keeps the solver near the warm assignment's
 neighborhood (α≈9 / K4_free basin) even after IS-cuts reject the seed. The cuts
 prevent exact re-solve of the seed; the hint biases search toward warm literals.
 
-**IS-directed local repair (PR #11):** After seed-first extracts an independent set I for
-primary target t (20 or 21) and adds the IS-cut, the system attempts IS-directed local
-repair: starting from warm free-bits, it flips bits that participate in hitting I (the cut
-literals) to satisfy the cut while staying K4_free and maintaining low greedy α. This
-surgical flip moves away from the rejected seed toward a nearby K4_free assignment that
-satisfies the cut, rather than re-attracting to the reject. The repaired assignment (if
+**Guided IS-directed local repair (PR #11 + current):** After seed-first extracts an 
+independent set I for primary target t (20 or 21) and adds the IS-cut, the system attempts 
+guided IS-directed local repair: starting from warm free-bits, it systematically evaluates 
+flipping cut literals to satisfy the cut while staying K4_free and maintaining low greedy α.
+
+The guided repair algorithm:
+1. **Exhaustive single cut-lit flips**: Try each cut literal individually; score by K4_free 
+   (hard requirement), min N(0) triangles, min greedyα, min Hamming to warm
+2. **Best-first pairs**: Among top single-lit candidates by triangle delta, evaluate pairs 
+   to find combinations that further reduce triangles
+3. **Optional hill-climb**: On non-cut bits to kill remaining triangles without undoing the 
+   cut (controlled by RAMSEY_7E4_REPAIR_HILLCLIMB)
+
+This systematic search moves away from the rejected seed toward a nearby K4_free assignment 
+that satisfies the cut, rather than random trial-and-error. The repaired assignment (if 
 successful) replaces warm_bits as the hint for cold CEGIS rounds.
+
+**Early-return bug fix:** Previous implementation returned warm unchanged if any cut lit was 
+already true (line 446-448). This bug is fixed — the algorithm now always attempts repair when 
+the cut is violated.
 
 Expected dump schema:
 
@@ -158,6 +171,9 @@ hit-I clause. They are not the same.
 | `RAMSEY_7E4_WARM` | 0 | 0 | Load warm-starts from `data/phase7/7e1/` if =1 |
 | `RAMSEY_7E4_WARM_RADIUS` | 0 | 0 | Hamming-ball radius around warm bits for cold rounds (0=off; suggest 10-20 for local smoke) |
 | `RAMSEY_7E4_SEED_FIRST_T` | 20,21 | 20,21 | Comma-separated t values to cut during seed-first (empty = all priority_t) |
+| `RAMSEY_7E4_REPAIR_SINGLES` | all | all | Max single-lit candidates to evaluate in guided repair (default: all cut_lits) |
+| `RAMSEY_7E4_REPAIR_PAIRS` | 20 | 20 | Max pair candidates to evaluate in guided repair (default: 20) |
+| `RAMSEY_7E4_REPAIR_HILLCLIMB` | 0 | 0 | Hill-climb steps on non-cut bits after repair (0=off; suggest 10-50 for aggressive triangle cleanup) |
 
 **When to raise TRI_FIX:** If cold CEGIS rounds after seed-first consistently hit 
 `triangle-repair cap` without reaching K4_free, increase `RAMSEY_7E4_TRI_FIX`. This
@@ -171,6 +187,15 @@ constrain cold-round SAT solutions within a Hamming ball of the warm assignment.
 hard constraint: the model will only return solutions with ≤ radius bits flipped from warm.
 Default 0 = off (soft AddHint guidance only). Use for targeted local exploration when
 basin retention alone is insufficient.
+
+**Guided IS-repair tuning:**
+- `RAMSEY_7E4_REPAIR_SINGLES`: Limits single-lit evaluation (default: all cut_lits). Set lower 
+  (e.g. 10-20) for large cut_lits to reduce repair time.
+- `RAMSEY_7E4_REPAIR_PAIRS`: Controls pair search breadth (default: 20). Increase for more 
+  exhaustive pair exploration if single-lits fail.
+- `RAMSEY_7E4_REPAIR_HILLCLIMB`: Enables post-repair hill-climb on non-cut bits (default: 0=off). 
+  Set to 10-50 for aggressive triangle cleanup if repaired assignments have non-zero N(0) 
+  triangles. Warning: increases repair time.
 
 Env overrides:
 
