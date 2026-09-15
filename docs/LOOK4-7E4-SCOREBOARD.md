@@ -1,7 +1,7 @@
 # Look 4 (7e4 Two-Block CEGIS) Instrument-Negative Scoreboard
 
 **Updated:** 2026-09-15  
-**Repository tip:** `3853007` (PR #13 — Replace random IS-repair with guided search in 7e4)  
+**Repository tip:** `e95d67d` (PR #14 — Track A negative scoreboard merge; PR #13 was `3853007` for guided-repair code)  
 **Published cell:** R(4,20) ≥ 252 (Yu), R(4,21) ≥ 252 (Yu)
 
 ---
@@ -47,8 +47,8 @@ RAMSEY_7E4_M=126,128 RAMSEY_7E4_WARM=1 RAMSEY_7E4_WARM_RADIUS=0 \
 ```
 
 **Warms used:**
-- **m=126 (n=252):** warm m126_r9 (K4_free=True, greedyα=18)
-- **m=128 (n=256):** warm m128_r6 (K4_free=True, greedyα=17)
+- **m=126 (n=252):** warm m126_r9 (K4_free=True, greedyα=9)
+- **m=128 (n=256):** warm m128_r6 (K4_free=True, greedyα=5)
 
 **Result:** Both printed `IS-REPAIR failed`, cold CEGIS returned to triangle-repair cap / MODEL_INVALID / greedy-α≈m nogood. No graphs emitted (`graphs=0`). Cell remains 252.
 
@@ -79,8 +79,8 @@ Best K4-free warms from job 7e.1 (multi-t decide, priority t=20,21):
 
 | m | n | restart | K4_free | greedy_α | decide t=20 | decide t=21 | IS-repair (PR #13) |
 |---|---|---|---|---|---|---|---|
-| 126 | 252 | 9 | True | 18 | found=True | found=True | 0/62 singles K4-free, 0/225 pairs K4-free |
-| 128 | 256 | 6 | True | 17 | found=True | found=True | 0/63 singles K4-free, 0/225 pairs K4-free |
+| 126 | 252 | 9 | True | 9 | found=True | found=True | 0/62 singles K4-free, 0/225 pairs K4-free |
+| 128 | 256 | 6 | True | 5 | found=True | found=True | 0/63 singles K4-free, 0/225 pairs K4-free |
 
 Notes:
 - **found=True** means decide extracted a t-IS on full graph (reject); these warms do not witness α<t
@@ -109,7 +109,7 @@ Wave D (GPU overnight with current method + current warms) is **not recommended*
 
 ---
 
-## Pull Requests (Through PR #13)
+## Pull Requests (Through PR #14)
 
 - **PR #2:** Scaffolding + lazy triangle CEGIS + degree LB + sharp IS-cuts
 - **PR #3:** Stronger degree LB + greedy nogood + local M≥101
@@ -123,6 +123,7 @@ Wave D (GPU overnight with current method + current warms) is **not recommended*
 - **PR #11:** IS-directed local repair + WARM_RADIUS constraint + MODEL_INVALID fix
 - **PR #12:** (if any — check git log)
 - **PR #13:** Replace random IS-repair with guided search (singles→pairs→hill-climb) — **instrument-negative on best warms**
+- **PR #14:** Track A negative scoreboard (update scoreboard after PR #13 Mac smoke result)
 
 ---
 
