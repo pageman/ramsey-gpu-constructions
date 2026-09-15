@@ -1,0 +1,22 @@
+{
+  "date": "2026-09-14",
+  "tip": "397b4c7",
+  "pr": 11,
+  "device": "Mac",
+  "verdict": "instrument_negative",
+  "graphs": 0,
+  "claim": "R(4,20) >= 252 unchanged",
+  "method": "7e4 Wave C stack: seed-first, IS-cuts, AddHint, WARM_RADIUS, random IS-REPAIR, MODEL_INVALID rebuild",
+  "smoke_logs": [
+    "wave-c-smoke-m126-isrepair",
+    "m128-warm-r15",
+    "m128-warm-r0",
+    "m126-128-warm"
+  ],
+  "reopen_blocked": true,
+  "reopen_criteria": [
+    "Guided IS-repair yields K4_free cut-satisfying neighbor + cold decide found=False t=20",
+    "New warm with found=False t=20",
+    "New instrument"
+  ]
+}
